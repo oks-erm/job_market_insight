@@ -2,15 +2,24 @@ import requests
 import time
 import csv
 import re
+import os
+import psycopg2
+from urllib import parse
 from bs4 import BeautifulSoup
 from skills import tech_skills
+from db import create_table, insert_job_data, is_visited_link
+from os.path import isfile
 
 
-file = open('linkedin-jobs.csv', 'a')
-writer = csv.writer(file)
-writer.writerow(['Title', 'Company', 'Location', 'Date', 'Skills', 'Link'])
+visited = set()
+visited_file = 'visited.txt'
+file_path = 'linkedin-jobs.csv'
+
+RETRY_TIMEOUT = 5
+MAX_RETRIES = 5
 
 
+# filter skills from job description
 def filter_skills(description):
     filtered_skills = []
     for skill in tech_skills:
@@ -19,35 +28,84 @@ def filter_skills(description):
     return filtered_skills
 
 
+# get job id from job link
+def get_job_id(job_link):
+    job_id = re.search(r"-(\d+)\?", job_link)
+    if job_id:
+        return job_id.group(1)
+    return None
+
+
+# scrape job description and industry visiting job link
 def scrape_job_description(job_link):
-    response = requests.get(job_link)
-    print(response.status_code)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    job_description = soup.find(
-        'div', class_='description__text').text.strip() if soup.find('div', class_='description__text') else 'N/A'
-    print(job_description)
-    req_skills = filter_skills(job_description)
+    retry_count = 0
+    while retry_count < MAX_RETRIES:
+        response = requests.get(job_link)
+        print(response.status_code)
 
-    return list(set(req_skills))
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            # get job description
+            job_description = soup.find(
+                'div', class_='description__text').text.strip() if soup.find('div', class_='description__text') else 'N/A'
+            req_skills = filter_skills(job_description)
+
+            # get industries
+            # Find the list of criteria items
+            criteria_list = soup.find('ul', class_='description__job-criteria-list')
+            fourth_child = criteria_list.select('li:nth-child(4)')
+            if fourth_child:
+                industries_element = fourth_child[0].find(
+                    'span', class_='description__job-criteria-text')
+                if industries_element:
+                    industries = industries_element.text.strip()
+                else:
+                    print('Industries not found')
+            else:
+                print('4th child item not found')
+            return list(set(req_skills)), industries
+
+        elif response.status_code == 429:
+            print("Too Many Requests. Retrying after timeout...")
+            time.sleep(RETRY_TIMEOUT)
+            retry_count += 1
+            continue
+
+        else:
+            print(
+                f"Error occurred while scraping job description: {response.status_code}")
+            return []
+
+    print(f"Max retry limit reached for {job_link}. Skipping job description.")
+    return []
 
 
+# main scraper function
 def linkedin_scraper(webpage, page_number):
+    create_table()
     next_page = webpage + str(page_number)
-    print(str(next_page))
     response = requests.get(str(next_page))
     soup = BeautifulSoup(response.content, 'html.parser')
 
     jobs = soup.find_all(
         'div', class_='base-card relative w-full hover:no-underline focus:no-underline base-card--link base-search-card base-search-card--link job-search-card')
 
+    job_count = 0  # Track the number of new jobs scraped in this iteration
+
     for job in jobs:
+        job_link = job.find('a', class_='base-card__full-link')['href']
+        job_id = get_job_id(job_link)
+
+        if is_visited_link(job_id):
+            print(f"Skipping duplicate job")
+            continue
+    
         job_title = job.find(
             'h3', class_='base-search-card__title').text.strip()
         job_company = job.find(
             'h4', class_='base-search-card__subtitle').text.strip()
         job_location = job.find(
             'span', class_='job-search-card__location').text.strip()
-        job_link = job.find('a', class_='base-card__full-link')['href']
         job_date_field = job.find(
             'time', class_=['job-search-card__listdate', 'job-search-card__listdate--new'])['datetime']
         if job_date_field is not None:
@@ -55,24 +113,31 @@ def linkedin_scraper(webpage, page_number):
         else:
             job_date = "N/A"
 
-        job_description = scrape_job_description(job_link)
+        job_description, industries = scrape_job_description(job_link)
+        if job_description is not []:
+            job_count += 1
 
-        writer.writerow([
-            job_title,
-            job_company,
-            job_location,
-            job_date,
-            job_description,
-            job_link,
-        ])
+        # Insert job data
+        insert_job_data({
+            'job_id': job_id,
+            'title': job_title,
+            'category': industries, 
+            'company': job_company,
+            'location': job_location,
+            'date': job_date,
+            'skills': ','.join(job_description),
+            'link': job_link
+        })
 
-        time.sleep(3)
+        time.sleep(2)
 
-    print('scraped the page successfully!')
+    print(f'Scraped {job_count} jobs from the page!')
 
-    if page_number < 25:
-        page_number = page_number + 25
-        linkedin_scraper(webpage, page_number)
+    if job_count > 0:  # If new jobs were scraped in this iteration
+        if page_number < 500:
+                page_number = page_number + 25
+                linkedin_scraper(webpage, page_number)
+        else:
+            print('Scraping completed!')
     else:
-        file.close()
-        print('File closed')
+        print('No new jobs to scrape. Scraping completed!')
