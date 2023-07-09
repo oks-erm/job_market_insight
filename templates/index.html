@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Job Search</title>
+</head>
+
+<body>
+    <h1>Job Search Results</h1>
+    <div id="resultsContainer" style="display: none;">
+        <p>Location: <span id="location"></span></p>
+        <p>Keyword: <span id="keywords"></span></p>
+
+        <h2>Job Titles:</h2>
+        <ul id="results">
+            <!-- Job titles will be added dynamically here -->
+        </ul>
+    </div>
+
+    <div id="searchFormContainer">
+        <form id="searchForm">
+            <label for="keywords">Keywords:</label>
+            <input type="text" id="keywordsInput" name="keywords" required>
+            <br>
+            <label for="location">Location:</label>
+            <input type="text" id="locationInput" name="location" required>
+            <br>
+            <button type="submit">Search</button>
+        </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Handle form submission using AJAX
+        $('#searchForm').submit(function (event) {
+            event.preventDefault();  // Prevent the form from submitting normally
+
+            // Get the form values
+            var keywords = $('#keywordsInput').val();
+            var location = $('#locationInput').val();
+
+            // Send AJAX request to the Flask backend
+            $.ajax({
+                url: '/search',
+                type: 'GET',
+                data: { keywords: keywords, location: location },
+                success: function (data) {
+                    // Display the results
+                    $('#location').text(location);
+                    $('#keywords').text(keywords);
+                    $('#searchFormContainer').hide();
+                    $('#resultsContainer').show();
+                    displayJobData(data);
+                },
+                error: function () {
+                    alert('An error occurred while searching for jobs.');
+                }
+            });
+
+             // Function to display job data
+            function displayJobData(jobData) {
+                var resultsContainer = $('#results');
+                resultsContainer.empty();
+
+                if (jobData.length === 0) {
+                    resultsContainer.append('<p>No job data found.</p>');
+                } else {
+                    var jobList = $('<ul></ul>');
+
+                    for (var i = 0; i < jobData.length; i++) {
+                        var job = jobData[i];
+                        var listItem = $('<li></li>');
+
+                        // Extract the values from the tuple
+                        var job_id = job[0];
+                        var title = job[1];
+                        var company = job[2];
+                        var location_id = job[3];
+                        var category_id = job[4];
+                        var date = job[5];
+                        var skills = job[6];
+                        var link = job[7];
+
+                        // Add job details to the list item
+                        var titleElement = $('<h3></h3>').text(title);
+                        var companyElement = $('<p></p>').text('Company: ' + company);
+                        var locationElement = $('<p></p>').text('Location: ' + location_id);
+                        var dateElement = $('<p></p>').text('Date: ' + date);
+                        var skillsElement = $('<p></p>').text('Skills: ' + skills);
+                        var linkElement = $('<a></a>').attr('href', link).text('View Job');
+
+                        listItem.append(titleElement, companyElement, locationElement, dateElement, skillsElement, linkElement);
+                        jobList.append(listItem);
+                    }
+
+                    resultsContainer.append(jobList);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
+

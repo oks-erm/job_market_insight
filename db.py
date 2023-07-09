@@ -181,8 +181,10 @@ def get_job_data():
 
     cur.execute(
         '''
-        SELECT job_id, title, company, location_id, category_id, date, skills, link
-        FROM jobs
+        SELECT j.job_id, j.title, j.company, l.location_name as location, c.category_name as category, j.date, j.skills, j.link
+        FROM jobs j
+        JOIN locations l ON j.location_id = l.id
+        JOIN job_categories c ON j.category_id = c.id
         '''
     )
 

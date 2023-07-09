@@ -40,45 +40,48 @@ def get_job_id(job_link):
 def scrape_job_description(job_link):
     retry_count = 0
     while retry_count < MAX_RETRIES:
-        response = requests.get(job_link)
-        print(response.status_code)
+        try:
+            response = requests.get(job_link)
+            response.raise_for_status()
+            print(response.status_code)
 
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, 'html.parser')
-            # get job description
-            job_description = soup.find(
-                'div', class_='description__text').text.strip() if soup.find('div', class_='description__text') else 'N/A'
-            req_skills = filter_skills(job_description)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.content, 'html.parser')
+                # get job description
+                job_description = soup.find(
+                    'div', class_='description__text').text.strip() if soup.find('div', class_='description__text') else 'N/A'
+                req_skills = filter_skills(job_description)
 
-            # get industries
-            criteria_list = soup.find('ul', class_='description__job-criteria-list')
-            fourth_child = criteria_list.select('li:nth-child(4)')
-            if fourth_child:
-                industries_element = fourth_child[0].find(
-                    'span', class_='description__job-criteria-text')
-                if industries_element:
-                    industries = industries_element.text.strip()
+                # get industries
+                criteria_list = soup.find('ul', class_='description__job-criteria-list')
+                fourth_child = criteria_list.select('li:nth-child(4)')
+                if fourth_child:
+                    industries_element = fourth_child[0].find(
+                        'span', class_='description__job-criteria-text')
+                    if industries_element:
+                        industries = industries_element.text.strip()
+                    else:
+                        industries = 'N/A'
+                        print('Industries not found')
                 else:
                     industries = 'N/A'
-                    print('Industries not found')
-            else:
-                industries = 'N/A'
-                print('4th child item not found')
-            return list(set(req_skills)), industries
+                    print('4th child item not found')
+                return list(set(req_skills)), industries
 
-        elif response.status_code == 429:
-            print("Too Many Requests. Retrying after timeout...")
-            time.sleep(RETRY_TIMEOUT)
-            retry_count += 1
-            continue
+        except requests.HTTPError as e:
+            if response.status_code == 429 or response.status_code == 503:
+                print(f"{response.status_code} Error. Retrying after timeout...")
+                time.sleep(RETRY_TIMEOUT)
+                retry_count += 1
+                continue
 
-        else:
-            print(
-                f"Error occurred while scraping job description: {response.status_code}")
-            return []
+            raise Exception(f"Error occurred while scraping job description: {str(e)}")
+
+        except Exception as e:
+            raise Exception(f"Unexpected error occurred while scraping job description: {str(e)}")
 
     print(f"Max retry limit reached for {job_link}. Skipping job description.")
-    return []
+    return [], "N/A"
 
 
 # main scraper function
