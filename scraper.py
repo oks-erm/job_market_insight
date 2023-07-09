@@ -51,7 +51,6 @@ def scrape_job_description(job_link):
             req_skills = filter_skills(job_description)
 
             # get industries
-            # Find the list of criteria items
             criteria_list = soup.find('ul', class_='description__job-criteria-list')
             fourth_child = criteria_list.select('li:nth-child(4)')
             if fourth_child:
@@ -60,8 +59,10 @@ def scrape_job_description(job_link):
                 if industries_element:
                     industries = industries_element.text.strip()
                 else:
+                    industries = 'N/A'
                     print('Industries not found')
             else:
+                industries = 'N/A'
                 print('4th child item not found')
             return list(set(req_skills)), industries
 
@@ -134,7 +135,7 @@ def linkedin_scraper(webpage, page_number):
     print(f'Scraped {job_count} jobs from the page!')
 
     if job_count > 0:  # If new jobs were scraped in this iteration
-        if page_number < 500:
+        if page_number < 1000:
                 page_number = page_number + 25
                 linkedin_scraper(webpage, page_number)
         else:

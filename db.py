@@ -91,8 +91,10 @@ def insert_job_data(job_data):
 
         # Insert location if it doesn't exist
         if not location_id_row:
+            # Truncate the location_name to fit within the maximum length
+            location_name = job_data['location'][:255]
             cur.execute(
-                'INSERT INTO locations (location_name) VALUES (%s) RETURNING id', (job_data['location'],))
+                'INSERT INTO locations (location_name) VALUES (%s) RETURNING id', (location_name,))
             location_id = cur.fetchone()[0]
         else:
             location_id = location_id_row[0]
@@ -119,9 +121,19 @@ def insert_job_data(job_data):
 
         conn.commit()
     except psycopg2.IntegrityError:
-        print(
-            f"Something wrong with categories {category_id}.")
-        category_id = None
+        print(f"Something wrong with locations {location_id}.")
+        location_id = None
+    except psycopg2.errors.StringDataRightTruncation:
+        print(f"Truncating location_name to fit within the maximum length.")
+        location_id = None
+
+        # Truncate the location_name to fit within the maximum length
+        location_name = job_data['location'][:255]
+        cur.execute(
+            'INSERT INTO locations (location_name) VALUES (%s) RETURNING id', (location_name,))
+        location_id = cur.fetchone()[0]
+
+        conn.commit()
 
     try:
         # Insert job data
