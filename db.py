@@ -64,14 +64,6 @@ def create_table():
         )
     ''')
 
-    # cur.execute(f"SELECT * FROM visited")
-    # rows = cur.fetchall()
-    # print(rows)
-
-    # cur.execute(f"SELECT * FROM jobs")
-    # rows = cur.fetchall()
-    # print(rows)
-
     conn.commit()
     cur.close()
     conn.close()
