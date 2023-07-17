@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, jsonify
 from flask import Flask, render_template, request
 from scraper import linkedin_scraper
 from db import get_job_data
+import plots
+import threading
 
 
 app = Flask(__name__)
@@ -16,6 +18,12 @@ def index():
 def search():
     keywords = request.args.get('keywords')
     location = request.args.get('location')
+
+    # Call the create_search_dataframe function from plots.py to get the DataFrame
+    search_dataframe = plots.create_search_dataframe(keywords, location)
+    plot_path = 'static/images/plot.png'
+    plots.create_top_skills_plot(search_dataframe, plot_path)
+
     # Get existing job data from the database
     job_data = get_job_data()  
 
@@ -26,7 +34,7 @@ def search():
         # Update the job data after scraping
         job_data = get_job_data()
 
-    return jsonify(job_data)
+    return jsonify({'plot_path': plot_path, 'job_data': job_data})
 
 
 if __name__ == '__main__':
