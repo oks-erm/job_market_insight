@@ -49,6 +49,7 @@ def create_search_dataframe(keywords, location):
     # Fill missing values with "N/A"
     df_filled = df.fillna(value="N/A")
 
+
     # Extract city and country names from the 'location' column
     def extract_place_names(location_str):
         places = GeoText(location_str)

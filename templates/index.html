@@ -48,6 +48,8 @@
             // Show the loader
             $('#loader').show();
             $('#resultsContainer').hide();
+            $('#plotContainer').hide();
+            $('#plotImg').attr('src', '');
 
             // Send AJAX request to the Flask backend
             $.ajax({
@@ -58,7 +60,6 @@
                     // Hide the loader and show the results container
                     $('#loader').hide();
                     $('#resultsContainer').show();
-                    console.log(data.plot_path);
                     // Display the results and plot
                     $('#location').text(location);
                     $('#keywords').text(keywords);

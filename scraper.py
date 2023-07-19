@@ -8,12 +8,7 @@ from urllib import parse
 from bs4 import BeautifulSoup
 from skills import tech_skills
 from db import create_table, insert_job_data, is_visited_link
-from os.path import isfile
 
-
-visited = set()
-visited_file = 'visited.txt'
-file_path = 'linkedin-jobs.csv'
 
 RETRY_TIMEOUT = 5
 MAX_RETRIES = 5

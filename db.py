@@ -1,6 +1,7 @@
 import psycopg2
 import os
 from urllib import parse
+import pandas as pd
 from psycopg2 import IntegrityError
 if os.path.exists('env.py'):
     import env
@@ -21,7 +22,6 @@ def create_table():
     conn = psycopg2.connect(host=DB_HOST, port=DB_PORT,
                             database=DB_NAME, user=DB_USER, password=DB_PASSWORD)
     cur = conn.cursor()
-
     # Create locations table
     cur.execute('''
         CREATE TABLE IF NOT EXISTS locations (
@@ -30,7 +30,6 @@ def create_table():
             geo_id VARCHAR(255) UNIQUE
         )
     ''')
-
 
     # Create job_categories table
     cur.execute('''
@@ -50,7 +49,7 @@ def create_table():
             location_id INTEGER REFERENCES locations (id),
             category_id INTEGER REFERENCES job_categories (id),
             date VARCHAR(255),
-            skills VARCHAR(255),
+            skills VARCHAR(500),
             link TEXT
         )
     ''')
@@ -69,66 +68,66 @@ def create_table():
     conn.close()
 
 
-# insert job data
+# Helper function to truncate a string
+def truncate_string(string, length):
+    return string[:length] if len(string) > length else string
+
+
+# Helper function to insert data into a table
+def insert_into_table(cur, table_name, column_name, data_value):
+    try:
+        cur.execute(
+            f'SELECT id FROM {table_name} WHERE {column_name} = %s', (data_value,))
+        row = cur.fetchone()
+
+        # Insert data if it doesn't exist
+        if not row:
+            # Truncate the data_value to fit within the maximum length
+            data_value_truncated = data_value[:255]
+            cur.execute(
+                f'INSERT INTO {table_name} ({column_name}) VALUES (%s) RETURNING id', (data_value_truncated,))
+            data_id = cur.fetchone()[0]
+        else:
+            data_id = row[0]
+
+        return data_id
+
+    except psycopg2.IntegrityError:
+        print(f"Something wrong with {table_name} {data_value}.")
+        return None
+    except psycopg2.errors.StringDataRightTruncation:
+        print(f"Truncating {column_name} to fit within the maximum length.")
+        data_value_truncated = data_value[:255]
+        cur.execute(
+            f'INSERT INTO {table_name} ({column_name}) VALUES (%s) RETURNING id', (data_value_truncated,))
+        data_id = cur.fetchone()[0]
+
+        return data_id
+    
+
+# Insert job data
 def insert_job_data(job_data):
     conn = psycopg2.connect(host=DB_HOST, port=DB_PORT,
                             database=DB_NAME, user=DB_USER, password=DB_PASSWORD)
     cur = conn.cursor()
 
-    try:
-        # Get location_id from locations table
-        cur.execute('SELECT id FROM locations WHERE location_name = %s',
-                    (job_data['location'],))
-        location_id_row = cur.fetchone()
+    location_id = insert_into_table(
+        cur, 'locations', 'location_name', job_data['location'])
+    category_id = insert_into_table(
+        cur, 'job_categories', 'category_name', job_data['category'])
 
-        # Insert location if it doesn't exist
-        if not location_id_row:
-            # Truncate the location_name to fit within the maximum length
-            location_name = job_data['location'][:255]
-            cur.execute(
-                'INSERT INTO locations (location_name) VALUES (%s) RETURNING id', (location_name,))
-            location_id = cur.fetchone()[0]
-        else:
-            location_id = location_id_row[0]
-
-        conn.commit()
-    except psycopg2.IntegrityError:
-        print(
-            f"Something wrong with locations {location_id}.")
-        location_id = None
+    if location_id is None or category_id is None:
+        print(f"Failed to insert data into locations or job_categories. Skipping job insertion.")
+        cur.close()
+        conn.close()
+        return None
 
     try:
-        # Get category_id from job_categories table
-        cur.execute(
-            'SELECT id FROM job_categories WHERE category_name = %s', (job_data['category'],))
-        category_id_row = cur.fetchone()
+        # Truncate the strings to fit within the 255-character limit
+        job_data['title'] = truncate_string(job_data['title'], 255)
+        job_data['company'] = truncate_string(job_data['company'], 255)
+        job_data['skills'] = truncate_string(job_data['skills'], 255)
 
-        # Insert category if it doesn't exist
-        if not category_id_row:
-            cur.execute(
-                'INSERT INTO job_categories (category_name) VALUES (%s) RETURNING id', (job_data['category'],))
-            category_id = cur.fetchone()[0]
-        else:
-            category_id = category_id_row[0]
-
-        conn.commit()
-    except psycopg2.IntegrityError:
-        print(f"Something wrong with locations {location_id}.")
-        location_id = None
-    except psycopg2.errors.StringDataRightTruncation:
-        print(f"Truncating location_name to fit within the maximum length.")
-        location_id = None
-
-        # Truncate the location_name to fit within the maximum length
-        location_name = job_data['location'][:255]
-        cur.execute(
-            'INSERT INTO locations (location_name) VALUES (%s) RETURNING id', (location_name,))
-        location_id = cur.fetchone()[0]
-
-        conn.commit()
-
-    try:
-        # Insert job data
         cur.execute(
             'INSERT INTO jobs (job_id, title, company, location_id, category_id, date, skills, link) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING job_id',
             (job_data['job_id'], job_data['title'], job_data['company'], location_id, category_id, job_data['date'], job_data['skills'], job_data['link']))
@@ -139,6 +138,7 @@ def insert_job_data(job_data):
 
         conn.commit()
         print(f"Inserted job_id: {job_id} into jobs and visited table.")
+
     except psycopg2.IntegrityError:
         print(
             f"Duplicate entry for job data: {job_data}. Skipping job insertion.")
@@ -150,7 +150,7 @@ def insert_job_data(job_data):
     return job_id
 
 
-# check visited job_ids in visited table
+# Check visited job_ids in visited table
 def is_visited_link(job_id):
     conn = psycopg2.connect(host=DB_HOST, port=DB_PORT,
                             database=DB_NAME, user=DB_USER, password=DB_PASSWORD)
@@ -185,4 +185,9 @@ def get_job_data():
     cur.close()
     conn.close()
 
-    return job_data
+    # Convert the fetched data to a DataFrame
+    columns = ["job_id", "title", "company", "location",
+               "category", "date", "skills", "link"]
+    df = pd.DataFrame(job_data, columns=columns)
+
+    return df
