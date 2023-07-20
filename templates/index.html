@@ -4,6 +4,7 @@
 <head>
     <title>Job Search</title>
     <link rel="stylesheet" href="static/css/style.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 
 <body>
@@ -33,23 +34,22 @@
         <p>Keyword: <span id="keywords"></span></p>
     </div>
     <div id="plotContainer" style="display: none;">
-        <img id="plotImg" src="" alt="Plot">
+        <h2>Top Skills Plot:</h2>
+        <div id="plot"></div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        $('#searchForm').submit(function (event) {
-            event.preventDefault();  // Prevent the form from submitting normally
-
+        function updatePlot() {
             // Get the form values
-            var keywords = $('#keywordsInput').val();
-            var location = $('#locationInput').val();
+            let keywords = $('#keywordsInput').val();
+            let location = $('#locationInput').val();
 
             // Show the loader
             $('#loader').show();
             $('#resultsContainer').hide();
             $('#plotContainer').hide();
-            $('#plotImg').attr('src', '');
+            $('#plot').empty(); // Clear the previous plot
 
             // Send AJAX request to the Flask backend
             $.ajax({
@@ -63,8 +63,9 @@
                     // Display the results and plot
                     $('#location').text(location);
                     $('#keywords').text(keywords);
-                    // displayJobData(data.job_data);
-                    $('#plotImg').attr('src', data.plot_path);
+
+                    let jsonData = JSON.parse(data.plot_json);
+                    Plotly.newPlot('plot', jsonData.data, jsonData.layout);
                     $('#plotContainer').show();
                 },
                 error: function () {
@@ -72,6 +73,38 @@
                     alert('An error occurred while searching for jobs.');
                 }
             });
+        }
+
+        // Function to fetch the updated plot 
+        function fetchUpdatedPlot() {
+            $.ajax({
+                url: '/search',
+                type: 'GET',
+                success: function (data) {
+                    if (data.plot_json) {
+                        $('#loader').hide();
+                        $('#resultsContainer').show();
+                        let jsonData = JSON.parse(data.plot_json);
+                        // Update the existing plot
+                        Plotly.react('plot', jsonData.data, jsonData.layout);
+                        $('#plotContainer').show();
+                    } else {
+                        setTimeout(fetchUpdatedPlot, 3000); 
+                    }
+                },
+                error: function () {
+                    $('#loader').hide();
+                    alert('An error occurred while fetching the updated plot.');
+                }
+            });
+        }
+            
+        // Handle the search form submission
+        $('#searchForm').submit(function (event) {
+            event.preventDefault(); 
+            updatePlot();
+            // Start fetching the updated plot data periodically
+            setTimeout(fetchUpdatedPlot, 1000); 
         });
     </script>
 

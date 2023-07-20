@@ -1,9 +1,7 @@
-import matplotlib
-matplotlib.use('Agg')
 
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
+import plotly.graph_objs as go
 from geotext import GeoText
 import psycopg2
 from urllib import parse
@@ -33,8 +31,7 @@ def create_search_dataframe(keywords, location):
         FROM jobs j
         JOIN locations l ON j.location_id = l.id
         JOIN job_categories c ON j.category_id = c.id
-        WHERE (j.title ILIKE '%{keywords}%' OR j.company ILIKE '%{keywords}%' OR j.skills ILIKE '%{keywords}%')
-        AND l.location_name ILIKE '%{location}%'
+        WHERE (j.title ILIKE '%{keywords}%' AND l.location_name ILIKE '%{location}%')
     '''
     cur.execute(query)
     job_data = cur.fetchall()
@@ -67,26 +64,28 @@ def create_search_dataframe(keywords, location):
     return df_sorted
 
 
-def create_top_skills_plot(search_dataframe, output_filename):
-    # Perform necessary plotting using the search_dataframe
+def create_top_skills_plot(search_dataframe, fig=None):
     max_skills = 20
     top_skills_df = get_top_skills(search_dataframe, max_skills)
 
     # Create the horizontal bar chart
-    plt.figure(figsize=(10, max_skills/2))
-    sns.barplot(x='frequency', y='skill',
-                data=top_skills_df, palette='viridis')
-    for index, value in enumerate(top_skills_df['frequency']):
-        plt.text(value, index, str(value), ha='left', va='center')
-    plt.xlabel('Frequency')
-    plt.ylabel('Skills')
-    plt.title(
-        f'Horizontal Bar Chart of Skill Popularity (top {max_skills} skills)')
+    new_fig = px.bar(
+        top_skills_df,
+        x='frequency',
+        y='skill',
+        orientation='h',
+        labels={'frequency': 'Frequency', 'skill': 'Skills'},
+        title=f'Horizontal Bar Chart of Skill Popularity (top {max_skills} skills)',
+    )
 
-    # Save the plot as an image file
-    plt.savefig(output_filename)
+    if fig is not None:
+        # If the figure is provided, update its data with the new data
+        fig.data = new_fig.data
+        fig.layout = new_fig.layout
+        return fig
 
-    plt.close()
+    return new_fig
+
 
 
 def get_top_skills(dataframe, max_skills):
