@@ -32,7 +32,7 @@ def scrape_and_update_data(url, keywords, location):
     if not job_data.empty:
         # If there is existing data (after scraping), create search_dataframe using the updated job data
         search_dataframe = plots.create_search_dataframe(keywords, location)
-        new_plot = plots.create_top_skills_plot(search_dataframe)
+        new_plot = plots.create_top_skills_plot(search_dataframe, keywords, location)
         print("New plot created")
         # Emit the new plot to all connected clients through the WebSocket
         socketio.emit('update_plot', {'plot_json': new_plot.to_json()})
@@ -45,7 +45,7 @@ def process_search_request(keywords, location):
     # Check if there is existing data to create Plotly figure
     if not job_data.empty:
         search_dataframe = plots.create_search_dataframe(keywords, location)
-        plot = plots.create_top_skills_plot(search_dataframe)
+        plot = plots.create_top_skills_plot(search_dataframe, keywords, location)
     else:
         search_dataframe = None
         plot = None

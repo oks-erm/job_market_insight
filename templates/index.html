@@ -29,10 +29,6 @@
             <span></span>
         </div>
     </div>
-    <div id="resultsContainer" style="display: none;">
-        <p>Location: <span id="location"></span></p>
-        <p>Keyword: <span id="keywords"></span></p>
-    </div>
     <div id="plotContainer" style="display: none;">
         <h2>Top Skills Plot:</h2>
         <div id="plot"></div>
@@ -49,8 +45,6 @@
             // Handle the search form submission
             $('#searchForm').submit(function (event) {
                 event.preventDefault(); 
-                // Hide the results container and show the loader
-                $('#resultsContainer').hide();
                 $('#plotContainer').hide();
                 $('#loader').show();
                 // Get the form values
@@ -63,7 +57,6 @@
         socket.on('update_plot', function (data) {
             // Hide the loader and show the results container
             $('#loader').hide();
-            $('#resultsContainer').show();
             // Parse the JSON data received from the backend
             let jsonData = JSON.parse(data.plot_json);
             // Update the existing Plotly graph with the new data and layout

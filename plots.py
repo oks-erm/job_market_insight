@@ -54,8 +54,12 @@ def create_search_dataframe(keywords, location):
         country = places.countries[0] if places.countries else ''
         return city, country
 
-    df_filled[['city', 'country']] = df_filled['location'].apply(
-        lambda x: pd.Series(extract_place_names(x)))
+    # Split the 'location' column into 'city' and 'country' columns
+    df_filled['city'] = df_filled['location'].apply(
+        lambda x: x.split(',')[0].strip())
+    df_filled['country'] = df_filled['location'].apply(
+        lambda x: x.split(',')[-1].strip())
+    df_filled.drop(columns=['location'], inplace=True)
 
     # Sort the DataFrame by the 'date' column in descending order
     df_sorted = df_filled.sort_values('date', ascending=False)
@@ -64,9 +68,12 @@ def create_search_dataframe(keywords, location):
     return df_sorted
 
 
-def create_top_skills_plot(search_dataframe, fig=None):
+def create_top_skills_plot(search_dataframe,  keywords=None, location=None, fig=None):
     max_skills = 20
     top_skills_df = get_top_skills(search_dataframe, max_skills)
+
+    # Sort the DataFrame in descending order of frequency to have top skills on top
+    top_skills_df = top_skills_df.sort_values(by='frequency', ascending=True)
 
     # Create the horizontal bar chart
     new_fig = px.bar(
@@ -74,8 +81,25 @@ def create_top_skills_plot(search_dataframe, fig=None):
         x='frequency',
         y='skill',
         orientation='h',
+        color='frequency',
         labels={'frequency': 'Frequency', 'skill': 'Skills'},
-        title=f'Horizontal Bar Chart of Skill Popularity (top {max_skills} skills)',
+        title=f'Top {max_skills} skills for {keywords} jobs in {location}',
+        height=600,  # Adjust the height of the figure as needed
+        width=800,  # Adjust the width of the figure as needed
+    )
+
+    # Adjust the appearance of the bars
+    new_fig.update_traces(
+        # Add a thin black outline to the bars
+        marker=dict(line=dict(width=1, color='black')),
+        showlegend=False,  # Hide the legend
+    )
+
+    # Adjust the layout to display all 20 skill labels on the y-axis without being cut off
+    new_fig.update_layout(
+        yaxis=dict(categoryorder='total ascending', showticklabels=True),
+        margin=dict(l=50, r=10, t=50, b=10),  # Reduce the margins
+        title_x=0.5,  # Center the title along the x-axis
     )
 
     if fig is not None:
@@ -85,7 +109,6 @@ def create_top_skills_plot(search_dataframe, fig=None):
         return fig
 
     return new_fig
-
 
 
 def get_top_skills(dataframe, max_skills):
