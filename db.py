@@ -165,20 +165,29 @@ def is_visited_link(job_id):
     return result is not None
 
 
-def get_job_data():
+def get_job_data(keywords=None, location=None):
     conn = psycopg2.connect(
         host=DB_HOST, port=DB_PORT, database=DB_NAME, user=DB_USER, password=DB_PASSWORD
     )
     cur = conn.cursor()
 
-    cur.execute(
-        '''
+    # Prepare the SQL query
+    query = '''
         SELECT j.job_id, j.title, j.company, l.location_name as location, c.category_name as category, j.date, j.skills, j.link
         FROM jobs j
         JOIN locations l ON j.location_id = l.id
         JOIN job_categories c ON j.category_id = c.id
-        '''
-    )
+    '''
+
+    # Check if keywords and/or location are provided to add filtering conditions to the query
+    if keywords and location:
+        query += f"WHERE j.title ILIKE '%{keywords}%' AND l.location_name ILIKE '%{location}%'"
+    elif keywords:
+        query += f"WHERE j.title ILIKE '%{keywords}%'"
+    elif location:
+        query += f"WHERE l.location_name ILIKE '%{location}%'"
+
+    cur.execute(query)
 
     job_data = cur.fetchall()
 

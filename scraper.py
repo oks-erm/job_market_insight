@@ -1,13 +1,11 @@
 import requests
 import time
-import csv
 import re
-import os
-import psycopg2
-from urllib import parse
+import socketio
 from bs4 import BeautifulSoup
 from skills import tech_skills
 from db import create_table, insert_job_data, is_visited_link
+from shared import scraping_complete
 
 
 RETRY_TIMEOUT = 5
@@ -79,64 +77,73 @@ def scrape_job_description(job_link):
     return [], "N/A"
 
 
-# main scraper function
-def linkedin_scraper(webpage, page_number):
-    create_table()
-    next_page = webpage + str(page_number)
-    response = requests.get(str(next_page))
-    soup = BeautifulSoup(response.content, 'html.parser')
+# Main scraper function
+def linkedin_scraper(webpage, page_number, namespace, headers):
+    print("Scraping function called!!!!!! LINKEDIN_SCRAPER")
+    try:
+        create_table()
+        next_page = webpage + str(page_number)
+        response = requests.get(str(next_page), headers=headers)
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-    jobs = soup.find_all(
-        'div', class_='base-card relative w-full hover:no-underline focus:no-underline base-card--link base-search-card base-search-card--link job-search-card')
+        jobs = soup.find_all(
+            'div', class_='base-card relative w-full hover:no-underline focus:no-underline base-card--link base-search-card base-search-card--link job-search-card')
 
-    job_count = 0  # Track the number of new jobs scraped in this iteration
+        job_count = 0  # Track the number of new jobs scraped in this iteration
 
-    for job in jobs:
-        job_link = job.find('a', class_='base-card__full-link')['href']
-        job_id = get_job_id(job_link)
+        for job in jobs:
+            job_link = job.find('a', class_='base-card__full-link')['href']
+            job_id = get_job_id(job_link)
 
-        if is_visited_link(job_id):
-            print(f"Skipping duplicate job")
-            continue
-    
-        job_title = job.find(
-            'h3', class_='base-search-card__title').text.strip()
-        job_company = job.find(
-            'h4', class_='base-search-card__subtitle').text.strip()
-        job_location = job.find(
-            'span', class_='job-search-card__location').text.strip()
-        job_date_field = job.find(
-            'time', class_=['job-search-card__listdate', 'job-search-card__listdate--new'])['datetime']
-        if job_date_field is not None:
-            job_date = job_date_field
-        else:
-            job_date = "N/A"
+            if is_visited_link(job_id):
+                print(f"Skipping duplicate job")
+                continue
 
-        job_description, industries = scrape_job_description(job_link)
-        if job_description is not []:
-            job_count += 1
+            job_title = job.find(
+                'h3', class_='base-search-card__title').text.strip()
+            job_company = job.find(
+                'h4', class_='base-search-card__subtitle').text.strip()
+            job_location = job.find(
+                'span', class_='job-search-card__location').text.strip()
+            job_date_field = job.find(
+                'time', class_=['job-search-card__listdate', 'job-search-card__listdate--new'])['datetime']
+            if job_date_field is not None:
+                job_date = job_date_field
+            else:
+                job_date = "N/A"
 
-        # Insert job data
-        insert_job_data({
-            'job_id': job_id,
-            'title': job_title,
-            'category': industries, 
-            'company': job_company,
-            'location': job_location,
-            'date': job_date,
-            'skills': ','.join(job_description),
-            'link': job_link
-        })
+            job_description, industries = scrape_job_description(job_link)
+            if job_description is not []:
+                job_count += 1
 
-        time.sleep(2)
+            # Insert job data
+            insert_job_data({
+                'job_id': job_id,
+                'title': job_title,
+                'category': industries,
+                'company': job_company,
+                'location': job_location,
+                'date': job_date,
+                'skills': ','.join(job_description),
+                'link': job_link
+            })
 
-    print(f'Scraped {job_count} jobs from the page!')
+            time.sleep(2)
 
-    if job_count > 0:  # If new jobs were scraped in this iteration
-        if page_number < 1000:
+        print(f'Scraped {job_count} jobs from the page!')
+
+        if job_count > 0: 
+            if page_number < 1000:
                 page_number = page_number + 25
-                linkedin_scraper(webpage, page_number)
+                linkedin_scraper(webpage, page_number, namespace, headers)
+            else:
+                print('Scraping completed!')
+                # Set the scraping complete flag for the specific client
+                # scraping_complete[namespace] = True
         else:
-            print('Scraping completed!')
-    else:
-        print('No new jobs to scrape. Scraping completed!')
+            print('No new jobs to scrape. Scraping completed!')
+            # Set the scraping complete flag for the specific client
+            # scraping_complete[namespace] = True
+    except Exception as e:
+        print(f"An error occurred during scraping: {e}")
+        raise e

@@ -21,51 +21,139 @@
         </form>
     </div>
     <div id="loader" style="display: none;">
-        <div class="loading">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
+        <div id="progressMessage">
+            Scraping in progress...
+        <div id="progressBarContainer">
+            <div class="progress progress-infinite">
+                <div class="progress-bar3">
+                </div>
+            </div>
+        </div>
         </div>
     </div>
-    <div id="plotContainer" style="display: none;">
+    <div id="noDataMessage" style="display: none;">
+        No data to display.
+    </div>
+    <div id="topSkillsPlotContainer" style="display: none;">
         <h2>Top Skills Plot:</h2>
-        <div id="plot"></div>
+        <div id="topSkillsPlot"></div>
+    </div>
+    <div id="topCitiesPlotContainer" style="display: none;">
+        <h2>Top Cities Plot:</h2>
+        <div id="topCitiesPlot"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function () {
-        var socket = io();
+            let socket = io();
+            let isScrapingComplete = false; // Flag to indicate scraping status
 
-        socket.on('connect', function () {
-            socket.emit('my event', { data: 'I\'m connected!' });
-            // Handle the search form submission
-            $('#searchForm').submit(function (event) {
-                event.preventDefault(); 
-                $('#plotContainer').hide();
-                $('#loader').show();
-                // Get the form values
-                let keywords = $('#keywordsInput').val();
-                let location = $('#locationInput').val();
-                socket.emit('search', { keywords: keywords, location: location });
+            socket.on('connect', function () {
+                socket.emit('my event', { data: 'I\'m connected!' });
+                // Handle the search form submission
+                $('#searchForm').submit(function (event) {
+                    event.preventDefault();
+                    $('#loader').show();
+
+                    $('#topSkillsPlotContainer').hide();
+                    $('#topCitiesPlotContainer').hide();
+                    $('#noDataMessage').hide();
+
+                    // Get the form values
+                    let keywords = $('#keywordsInput').val();
+                    let location = $('#locationInput').val();
+                    socket.emit('search', { keywords: keywords, location: location });
+                });
             });
-        });
 
-        socket.on('update_plot', function (data) {
-            // Hide the loader and show the results container
-            $('#loader').hide();
-            // Parse the JSON data received from the backend
-            let jsonData = JSON.parse(data.plot_json);
-            // Update the existing Plotly graph with the new data and layout
-            Plotly.react('plot', jsonData.data, jsonData.layout);
-            $('#plotContainer').show();
+            socket.on('existing_data_plots', function (data) {
+                console.log('Existing data plots received.');
+                console.log(data);
+                if (data.top_skills_plot && data.top_cities_plot) {
+                    try {
+                        // Parse the JSON data
+                        let topSkillsPlot = JSON.parse(data.top_skills_plot);
+                        let topCitiesPlot = JSON.parse(data.top_cities_plot);
+
+                        // Validate the data before creating plots
+                        if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
+                            $('#topSkillsPlotContainer').show();
+                            $('#topCitiesPlotContainer').show();
+
+                            // Create plots using Plotly Plot objects directly
+                            Plotly.newPlot('topSkillsPlot', topSkillsPlot);
+                            Plotly.newPlot('topCitiesPlot', topCitiesPlot);
+                        } else {
+                            $('#noDataMessage').show();
+                        }
+                    } catch (error) {
+                        console.error('Error parsing JSON data:', error);
+                        $('#noDataMessage').show();
+                    }
+                } else {
+                    $('#noDataMessage').show();
+                }
+            });
+
+            socket.on('update_plot', function (data) {
+                console.log('Plot update received.');
+                console.log(data);
+
+                if (data.top_skills_json && data.top_cities_json) {
+                    try {
+                        // Parse the JSON data
+                        let topSkillsPlot = JSON.parse(data.top_skills_json);
+                        let topCitiesPlot = JSON.parse(data.top_cities_json);
+
+                        // Validate the data before updating plots
+                        if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
+                            $('#loader').hide();
+                            $('#topSkillsPlotContainer').show();
+                            $('#topCitiesPlotContainer').show();
+
+                            Plotly.react('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
+                            Plotly.react('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
+                        } else {
+                            showNoDataMessage();
+                        }
+                    } catch (error) {
+                        console.error('Error parsing JSON data:', error);
+                        showNoDataMessage();
+                    }
+                } else {
+                    showNoDataMessage();
+                }
+            });
+
+            socket.on('no_data', function () {
+                // If there is no pre-existing data, show the progress bar
+                $('#progressMessage').text('Fetching data, please wait...');
+                $('#loader').show();
+            });
+
+            socket.on('scraping_completed', function () {
+                isScrapingComplete = true; // Set the flag to indicate scraping is complete
+                $('#loader').hide(); 
+                console.log('Scraping is complete.');
+            });
+
+            function validatePlotData(plotData) {
+                if (typeof plotData !== 'object' || plotData === null) {
+                    return false;
+                }
+                if (!plotData.hasOwnProperty('data') || !plotData.hasOwnProperty('layout')) {
+                    return false;
+                }
+                if (!Array.isArray(plotData.data) || plotData.data.length === 0) {
+                    return false;
+                }
+                return true;
+            }
+
         });
-    });
     </script>
-
 </body>
 
 </html>

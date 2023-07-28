@@ -1,4 +1,5 @@
-.loading {
+/* Loader */
+/* .loading {
     --speed-of-animation: 0.9s;
     --gap: 6px;
     --first-color: #4c86f9;
@@ -51,5 +52,64 @@
 
     20% {
         transform: scaleY(1);
+    }
+} */
+
+:root {
+    --green: #3cc33c;
+    --turquoise: #08a4a4;
+    --blue: #0000ff;
+    --light-blue: #add8e6;
+    --purple: #800080;
+    --red: #ff0000;
+}
+
+.progressBarContainer {
+    margin: 100px auto;
+    width: 70vw;
+    text-align: center;
+}
+
+.progress {
+    padding: 2px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 9px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25),
+        0 1px rgba(255, 255, 255, 0.08);
+}
+
+.progress-bar3 {
+    height: 8px;
+    border-radius: 4px;
+    background-image: linear-gradient(to right, var(--green), var(--turquoise), var(--blue), var(--light-blue), var(--purple), var(--red));
+    transition: 0.4s linear;
+    transition-property: width, background-color;
+}
+
+.progress-infinite .progress-bar3 {
+    width: 100%;
+    background-image: linear-gradient(to right, var(--green), var(--turquoise), var(--blue), var(--light-blue), var(--purple), var(--red));
+    animation: colorAnimation 1s infinite;
+}
+
+@keyframes colorAnimation {
+    0% {
+        background-image: linear-gradient(to right, var(--green), var(--turquoise), var(--blue), var(--light-blue), var(--purple), var(--red));
+    }
+
+    20% {
+        background-image: linear-gradient(to right, var(--turquoise), var(--blue), var(--light-blue), var(--purple), var(--red), var(--green));
+    }
+
+    40% {
+        background-image: linear-gradient(to right, var(--blue), var(--light-blue), var(--purple), var(--red), var(--green), var(--turquoise));
+    }
+
+    60% {
+        background-image: linear-gradient(to right, var(--light-blue), var(--purple), var(--red), var(--green), var(--turquoise), var(--blue));
+    }
+
+    100% {
+        background-image: linear-gradient(to right, var(--purple), var(--red), var(--green), var(--turquoise), var(--blue), var(--light-blue));
     }
 }
