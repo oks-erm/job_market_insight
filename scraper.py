@@ -1,7 +1,7 @@
 import requests
 import time
 import re
-import socketio
+import traceback
 from bs4 import BeautifulSoup
 from skills import tech_skills
 from db import create_table, insert_job_data, is_visited_link
@@ -92,43 +92,49 @@ def linkedin_scraper(webpage, page_number, namespace, headers):
         job_count = 0  # Track the number of new jobs scraped in this iteration
 
         for job in jobs:
-            job_link = job.find('a', class_='base-card__full-link')['href']
-            job_id = get_job_id(job_link)
+            try:
+                job_link = job.find('a', class_='base-card__full-link')['href']
+                job_id = get_job_id(job_link)
 
-            if is_visited_link(job_id):
-                print(f"Skipping duplicate job")
-                continue
+                if is_visited_link(job_id):
+                    print(f"Skipping duplicate job")
+                    continue
 
-            job_title = job.find(
-                'h3', class_='base-search-card__title').text.strip()
-            job_company = job.find(
-                'h4', class_='base-search-card__subtitle').text.strip()
-            job_location = job.find(
-                'span', class_='job-search-card__location').text.strip()
-            job_date_field = job.find(
-                'time', class_=['job-search-card__listdate', 'job-search-card__listdate--new'])['datetime']
-            if job_date_field is not None:
-                job_date = job_date_field
-            else:
-                job_date = "N/A"
+                job_title = job.find(
+                    'h3', class_='base-search-card__title').text.strip()
+                job_company = job.find(
+                    'h4', class_='base-search-card__subtitle').text.strip()
+                job_location = job.find(
+                    'span', class_='job-search-card__location').text.strip()
+                job_date_field = job.find(
+                    'time', class_=['job-search-card__listdate', 'job-search-card__listdate--new'])['datetime']
+                if job_date_field is not None:
+                    job_date = job_date_field
+                else:
+                    job_date = "N/A"
 
-            job_description, industries = scrape_job_description(job_link)
-            if job_description is not []:
-                job_count += 1
+                job_description, industries = scrape_job_description(job_link)
+                if job_description is not []:
+                    job_count += 1
 
-            # Insert job data
-            insert_job_data({
-                'job_id': job_id,
-                'title': job_title,
-                'category': industries,
-                'company': job_company,
-                'location': job_location,
-                'date': job_date,
-                'skills': ','.join(job_description),
-                'link': job_link
-            })
+                # Insert job data
+                insert_job_data({
+                    'job_id': job_id,
+                    'title': job_title,
+                    'category': industries,
+                    'company': job_company,
+                    'location': job_location,
+                    'date': job_date,
+                    'skills': ','.join(job_description),
+                    'link': job_link
+                })
 
-            time.sleep(2)
+                time.sleep(2)
+            except Exception as e:
+                # Log the error and continue with the next job link
+                print(
+                    f"An error occurred during scraping job description: {str(e)}")
+                print(traceback.format_exc())
 
         print(f'Scraped {job_count} jobs from the page!')
 

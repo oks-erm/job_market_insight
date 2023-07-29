@@ -101,11 +101,11 @@
                 console.log('Plot update received.');
                 console.log(data);
 
-                if (data.top_skills_json && data.top_cities_json) {
+                if (data.new_top_skills_json && data.new_top_cities_json) {
                     try {
                         // Parse the JSON data
-                        let topSkillsPlot = JSON.parse(data.top_skills_json);
-                        let topCitiesPlot = JSON.parse(data.top_cities_json);
+                        let topSkillsPlot = JSON.parse(data.new_top_skills_json);
+                        let topCitiesPlot = JSON.parse(data.new_top_cities_json);
 
                         // Validate the data before updating plots
                         if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {

@@ -3,7 +3,7 @@ from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from celery import Celery
 import requests
-import uuid
+import json
 import secrets
 import traceback
 from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
@@ -14,7 +14,7 @@ from db import get_job_data, create_table
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(32)
-socketio = SocketIO(app, async_mode='threading', engineio_logger=True, websocket_transports=['websocket', 'xhr-polling'])
+socketio = SocketIO(app, message_queue='redis://localhost:6379/0', async_mode='threading', engineio_logger=True, websocket_transports=['websocket', 'xhr-polling'])
 celery_app = Celery('celery_app', 
                     broker='redis://localhost:6379/0',
                     backend='redis://localhost:6379/0',
@@ -34,16 +34,6 @@ def index():
     return render_template('index.html')
 
 
-@socketio.on('search')
-def handle_search_event(data):
-    keywords = data.get('keywords')
-    location = data.get('location')
-    namespace = request.sid
-    response = process_search_request(keywords, location, namespace)
-
-    emit('existing_data_plots', response)
-
-
 @celery_app.task(name='app.scrape_linkedin_data')
 @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(1))
 def scrape_linkedin_data(url, keywords, location, namespace):
@@ -58,29 +48,30 @@ def scrape_linkedin_data(url, keywords, location, namespace):
         print("AFTER LINKEDIN SCRAPER")
         # Scraping is complete, update the job data after scraping
         job_data = get_job_data(keywords, location)
+        print(f'job_data {job_data}')
 
         if not job_data.empty:
             # If there is existing data (after scraping)
-            search_dataframe = plots.create_search_dataframe(
+            new_search_dataframe = plots.create_search_dataframe(
                 keywords, location)
-            new_skills_plot = plots.create_top_skills_plot(
-                search_dataframe, keywords, location)
+            new_top_skills_plot = plots.create_top_skills_plot(
+                new_search_dataframe, keywords, location)
             new_top_cities_plot = plots.create_top_cities_plot(
-                search_dataframe, max_cities=10, keywords=keywords, location=location)
+                new_search_dataframe, max_cities=10, keywords=keywords, location=location)
 
-            # Emit the new plots to the specific client through the WebSocket
             data = {
-                'top_skills_json': new_skills_plot.to_json(),
-                'top_cities_json': new_top_cities_plot.to_json(),
+                'new_top_skills_json': new_top_skills_plot.to_json(),
+                'new_top_cities_json': new_top_cities_plot.to_json(),
+                namespace: namespace
             }
-            print("BEFORE EMIT")
-            socketio.emit('update_plot', data, namespace=namespace)
-            print("Emitted 'update_plot' event")
+
+            socketio.emit('update_plot', data)
         else:
             results = {
-                'message': 'Fetching data, please wait...'
+                'message': 'Fetching data, please wait...',
+                'namespace': namespace
             }
-            emit('no_data', results, namespace=namespace)
+            socketio.emit('no_data', results)
 
     except requests.exceptions.HTTPError as e:
         print(f"Error occurred while scraping job description: {str(e)}")
@@ -93,7 +84,17 @@ def scrape_linkedin_data(url, keywords, location, namespace):
         print(f"Unexpected error occurred while scraping job description: {str(e)}")
         print(traceback.format_exc())
 
-    
+
+@socketio.on('search')
+def handle_search_event(data):
+    keywords = data.get('keywords')
+    location = data.get('location')
+    namespace = request.sid
+    response = process_search_request(keywords, location, namespace)
+
+    emit('existing_data_plots', response)
+
+
 def process_search_request(keywords, location, namespace):
     socketio.emit('show_progress_bar', namespace=namespace)
 
@@ -118,21 +119,11 @@ def process_search_request(keywords, location, namespace):
     if keywords and location:
         url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={keywords}&location={location}&geoId=104738515&trk=public_jobs_jobs-search-bar_search-submit&position=1&pageNum=0&start="
 
-        result = scrape_linkedin_data.apply_async(
+        scrape_linkedin_data.apply_async(
             args=[url, keywords, location, namespace],
             task_id=f'{keywords}_{location}'
         )
-
-        # Get the result from the Celery task
-        try:
-            # Wait for 60 seconds for the task to complete
-            results = result.get(timeout=60)
-        except TimeoutError:
-            results = {
-                'message': 'Fetching data took too long. Please try again later.'
-            }
-            emit('no_data', results, namespace=namespace)
-
+    #existing data
     return {
         'top_skills_plot': top_skills_plot.to_json() if top_skills_plot is not None else None,
         'top_cities_plot': top_cities_plot.to_json() if top_cities_plot is not None else None,
