@@ -1,5 +1,6 @@
 import psycopg2
 import os
+from datetime import datetime
 from urllib import parse
 import pandas as pd
 from psycopg2 import IntegrityError
@@ -50,7 +51,8 @@ def create_table():
             category_id INTEGER REFERENCES job_categories (id),
             date VARCHAR(255),
             skills VARCHAR(500),
-            link TEXT
+            link TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -128,9 +130,11 @@ def insert_job_data(job_data):
         job_data['company'] = truncate_string(job_data['company'], 255)
         job_data['skills'] = truncate_string(job_data['skills'], 255)
 
+        current_time = datetime.now()
+        
         cur.execute(
-            'INSERT INTO jobs (job_id, title, company, location_id, category_id, date, skills, link) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING job_id',
-            (job_data['job_id'], job_data['title'], job_data['company'], location_id, category_id, job_data['date'], job_data['skills'], job_data['link']))
+            'INSERT INTO jobs (job_id, title, company, location_id, category_id, date, skills, link, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING job_id',
+            (job_data['job_id'], job_data['title'], job_data['company'], location_id, category_id, job_data['date'], job_data['skills'], job_data['link'], current_time))
         job_id = cur.fetchone()[0]
 
         # Insert job_id into visited table

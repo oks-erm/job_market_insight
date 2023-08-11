@@ -10,11 +10,17 @@ from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
 import plots
 from scraper import linkedin_scraper
 from db import get_job_data, create_table
+from geoid import country_dict
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(32)
-socketio = SocketIO(app, message_queue='redis://localhost:6379/0', async_mode='threading', engineio_logger=True, websocket_transports=['websocket', 'xhr-polling'])
+app.config['DEBUG'] = True
+socketio = SocketIO(app, 
+                    message_queue='redis://localhost:6379/0', 
+                    async_mode='threading', 
+                    engineio_logger=True, 
+                    websocket_transports=['websocket', 'xhr-polling'])
 celery_app = Celery('celery_app', 
                     broker='redis://localhost:6379/0',
                     backend='redis://localhost:6379/0',
@@ -29,6 +35,32 @@ CORS(app)
 create_table()
 
 
+class Progress:
+    def __init__(self):
+        self.state = "not_started"
+
+    def set_state(self, state):
+        self.state = state
+
+    def get_state(self):
+        return self.state
+
+
+class ScrapeProgress:
+    def __init__(self):
+        self.namespaces = {}
+
+    def register_namespace(self, namespace):
+        if namespace not in self.namespaces:
+            self.namespaces[namespace] = Progress()
+
+    def get_state(self, namespace):
+        return self.namespaces.get(namespace, None)
+
+
+scrape_progress = ScrapeProgress()
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -38,17 +70,19 @@ def index():
 @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(1))
 def scrape_linkedin_data(url, keywords, location, namespace):
     print(f"Scraping FROM CELERY APP")
+    # Register the namespace for progress tracking
+    scrape_progress.register_namespace(namespace)
+
     try:
-        # Set a custom User-Agent header to mimic a real web browser
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
-
-        linkedin_scraper(url, 0, namespace, headers=headers)
-
+        # Set state to in_progress and emit
+        scrape_progress.namespaces[namespace].set_state("in_progress")
+        socketio.emit('progress_update', {'message': 'Scraping started...', 'state': scrape_progress.get_state(
+            namespace).get_state(), 'namespace': namespace})
+        
+        linkedin_scraper(url, 0, namespace)
         print("AFTER LINKEDIN SCRAPER")
         # Scraping is complete, update the job data after scraping
         job_data = get_job_data(keywords, location)
-        print(f'job_data {job_data}')
 
         if not job_data.empty:
             # If there is existing data (after scraping)
@@ -65,6 +99,10 @@ def scrape_linkedin_data(url, keywords, location, namespace):
                 namespace: namespace
             }
 
+            # Set state to done and emit
+            scrape_progress.namespaces[namespace].set_state("done")
+            socketio.emit('progress_update', {'message': 'All tasks complete.', 'state': scrape_progress.get_state(
+                namespace).get_state(), 'namespace': namespace})
             socketio.emit('update_plot', data)
         else:
             results = {
@@ -91,8 +129,9 @@ def handle_search_event(data):
     location = data.get('location')
     namespace = request.sid
     response = process_search_request(keywords, location, namespace)
-
-    emit('existing_data_plots', response)
+    # Check if the plots in the response are not None or empty
+    if response.get('top_skills_plot') and response.get('top_cities_plot'):
+        emit('existing_data_plots', response)
 
 
 def process_search_request(keywords, location, namespace):
@@ -117,7 +156,12 @@ def process_search_request(keywords, location, namespace):
         top_cities_plot = None
 
     if keywords and location:
-        url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={keywords}&location={location}&geoId=104738515&trk=public_jobs_jobs-search-bar_search-submit&position=1&pageNum=0&start="
+        geoid = country_dict.get(location.lower(), None)
+        print(geoid)
+        if geoid is None:
+            print(f"Geoid not found for {location}")
+            return None
+        url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={keywords}&location={location}&geoId={geoid}&trk=public_jobs_jobs-search-bar_search-submit&position=1&pageNum=0&start="
 
         scrape_linkedin_data.apply_async(
             args=[url, keywords, location, namespace],

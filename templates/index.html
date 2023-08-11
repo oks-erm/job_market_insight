@@ -47,112 +47,110 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function () {
-            let socket = io();
-            let isScrapingComplete = false; // Flag to indicate scraping status
+                let socket = io();
 
-            socket.on('connect', function () {
-                socket.emit('my event', { data: 'I\'m connected!' });
-                // Handle the search form submission
-                $('#searchForm').submit(function (event) {
-                    event.preventDefault();
-                    $('#loader').show();
+                socket.on('connect', function () {
+                    socket.emit('my event', { data: 'I\'m connected!' });
 
-                    $('#topSkillsPlotContainer').hide();
-                    $('#topCitiesPlotContainer').hide();
-                    $('#noDataMessage').hide();
+                    $('#searchForm').submit(function (event) {
+                        event.preventDefault();
+                        showLoader();
 
-                    // Get the form values
-                    let keywords = $('#keywordsInput').val();
-                    let location = $('#locationInput').val();
-                    socket.emit('search', { keywords: keywords, location: location });
+                        let keywords = $('#keywordsInput').val();
+                        let location = $('#locationInput').val();
+                        socket.emit('search', { keywords: keywords, location: location });
+                    });
                 });
-            });
 
-            socket.on('existing_data_plots', function (data) {
-                console.log('Existing data plots received.');
-                console.log(data);
-                if (data.top_skills_plot && data.top_cities_plot) {
-                    try {
-                        // Parse the JSON data
-                        let topSkillsPlot = JSON.parse(data.top_skills_plot);
-                        let topCitiesPlot = JSON.parse(data.top_cities_plot);
+                socket.on('existing_data_plots', handleExistingPlotData);
+                socket.on('update_plot', handleUpdatedPlotData);
 
-                        // Validate the data before creating plots
-                        if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
-                            $('#topSkillsPlotContainer').show();
-                            $('#topCitiesPlotContainer').show();
+                socket.on('no_data', function () {
+                    $('#loader').show();
+                    $('#progressMessage').show()
+                    $('#progressMessage').text('Fetching data, please wait...');
+                });
 
-                            // Create plots using Plotly Plot objects directly
-                            Plotly.newPlot('topSkillsPlot', topSkillsPlot);
-                            Plotly.newPlot('topCitiesPlot', topCitiesPlot);
-                        } else {
-                            $('#noDataMessage').show();
-                        }
-                    } catch (error) {
-                        console.error('Error parsing JSON data:', error);
-                        $('#noDataMessage').show();
-                    }
-                } else {
-                    $('#noDataMessage').show();
+                function handleExistingPlotData(data) {
+                    console.log('Existing data plots received.');
+                    handlePlotData(data, 'newPlot');
                 }
-            });
 
-            socket.on('update_plot', function (data) {
-                console.log('Plot update received.');
-                console.log(data);
+                function handleUpdatedPlotData(data) {
+                    console.log('Plot update received.');
+                    handleProgressUpdate(data.state);
+                    handlePlotData(data, 'react'); 
+                }
 
-                if (data.new_top_skills_json && data.new_top_cities_json) {
-                    try {
-                        // Parse the JSON data
-                        let topSkillsPlot = JSON.parse(data.new_top_skills_json);
-                        let topCitiesPlot = JSON.parse(data.new_top_cities_json);
+                function handlePlotData(data, plotMethod) {
+                    let skillsKey = (plotMethod === "newPlot") ? 'top_skills_plot' : 'new_top_skills_json';
+                    let citiesKey = (plotMethod === "newPlot") ? 'top_cities_plot' : 'new_top_cities_json';
 
-                        // Validate the data before updating plots
-                        if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
-                            $('#loader').hide();
-                            $('#topSkillsPlotContainer').show();
-                            $('#topCitiesPlotContainer').show();
+                    if (data[skillsKey] && data[citiesKey]) {
+                        try {
+                            let topSkillsPlot = JSON.parse(data[skillsKey]);
+                            let topCitiesPlot = JSON.parse(data[citiesKey]);
 
-                            Plotly.react('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
-                            Plotly.react('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
-                        } else {
+                            if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
+                                
+                                $('#topSkillsPlotContainer').show();
+                                $('#topCitiesPlotContainer').show();
+
+                                if (plotMethod === "newPlot") {
+                                    Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
+                                    Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
+                                } else if (plotMethod === "react") {
+                                    hideLoader();
+                                    Plotly.react('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
+                                    Plotly.react('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
+                                }
+                            } else {
+                                showNoDataMessage();
+                            }
+                        } catch (error) {
+                            console.error('Error parsing JSON data:', error);
                             showNoDataMessage();
                         }
-                    } catch (error) {
-                        console.error('Error parsing JSON data:', error);
+                    } else {
                         showNoDataMessage();
                     }
-                } else {
-                    showNoDataMessage();
                 }
+
+                function validatePlotData(plotData) {
+                    return typeof plotData === 'object' && plotData !== null &&
+                        plotData.hasOwnProperty('data') && plotData.hasOwnProperty('layout') &&
+                        Array.isArray(plotData.data) && plotData.data.length > 0;
+                }
+
+                function handleProgressUpdate(state) {
+                    if (state === "in_progress") {
+                        showLoader();
+                        console.log('in_progress')
+                        $('#progressMessage').text('Scraping in progress...').show();
+                        $('#topSkillsPlotContainer').show();
+                        $('#topCitiesPlotContainer').show();
+                    } else if (state === "done") {
+                        hideLoader();
+                        $('#progressMessage').hide();
+                    }
+                }
+
+                function showLoader() {
+                    $('#loader').show();
+                    $('#noDataMessage').hide();
+                }
+
+                function hideLoader() {
+                    $('#loader').hide();
+                }
+
+                function showNoDataMessage() {
+                    $('#noDataMessage').show();
+                    hideLoader();
+                }
+
             });
 
-            socket.on('no_data', function () {
-                // If there is no pre-existing data, show the progress bar
-                $('#progressMessage').text('Fetching data, please wait...');
-                $('#loader').show();
-            });
-
-            socket.on('scraping_completed', function () {
-                isScrapingComplete = true; // Set the flag to indicate scraping is complete
-                $('#loader').hide(); 
-                console.log('Scraping is complete.');
-            });
-
-            function validatePlotData(plotData) {
-                if (typeof plotData !== 'object' || plotData === null) {
-                    return false;
-                }
-                if (!plotData.hasOwnProperty('data') || !plotData.hasOwnProperty('layout')) {
-                    return false;
-                }
-                if (!Array.isArray(plotData.data) || plotData.data.length === 0) {
-                    return false;
-                }
-                return true;
-            }
-
-        });
     </script>
 </body>
 

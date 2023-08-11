@@ -5,7 +5,6 @@ import traceback
 from bs4 import BeautifulSoup
 from skills import tech_skills
 from db import create_table, insert_job_data, is_visited_link
-from shared import scraping_complete
 
 
 RETRY_TIMEOUT = 5
@@ -78,12 +77,12 @@ def scrape_job_description(job_link):
 
 
 # Main scraper function
-def linkedin_scraper(webpage, page_number, namespace, headers):
+def linkedin_scraper(webpage, page_number, namespace):
     print("Scraping function called!!!!!! LINKEDIN_SCRAPER")
     try:
         create_table()
         next_page = webpage + str(page_number)
-        response = requests.get(str(next_page), headers=headers)
+        response = requests.get(str(next_page))
         soup = BeautifulSoup(response.content, 'html.parser')
 
         jobs = soup.find_all(
@@ -141,7 +140,7 @@ def linkedin_scraper(webpage, page_number, namespace, headers):
         if job_count > 0: 
             if page_number < 1000:
                 page_number = page_number + 25
-                linkedin_scraper(webpage, page_number, namespace, headers)
+                linkedin_scraper(webpage, page_number, namespace)
             else:
                 print('Scraping completed!')
                 # Set the scraping complete flag for the specific client
