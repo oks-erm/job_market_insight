@@ -54,3 +54,5 @@ tech_skills = [
     'Data Governance', 'Data Privacy', 'Data Security', 'Data Quality', 'Data Catalog', 'Data Pipelines',
     'Data Ops', 'ML Ops'
 ]
+
+positions = {'developer', 'designer', 'analyst'}

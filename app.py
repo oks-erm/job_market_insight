@@ -3,7 +3,7 @@ from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from celery import Celery
 import requests
-import json
+from datetime import timedelta
 import secrets
 import traceback
 from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
@@ -11,6 +11,8 @@ import plots
 from scraper import linkedin_scraper
 from db import get_job_data, create_table
 from geoid import country_dict
+from skills import positions
+from schedule import create_beat_schedule, generate_link
 
 
 app = Flask(__name__)
@@ -21,15 +23,17 @@ socketio = SocketIO(app,
                     async_mode='threading', 
                     engineio_logger=True, 
                     websocket_transports=['websocket', 'xhr-polling'])
+
 celery_app = Celery('celery_app', 
                     broker='redis://localhost:6379/0',
                     backend='redis://localhost:6379/0',
                     broker_connection_retry_on_startup=True,
                     task_serializer='json',  
-                    # Accept 'json' content from tasks
                     accept_content=['json'],
                     result_serializer='json'
                     )
+celery_app.conf.beat_schedule = create_beat_schedule(positions, country_dict)
+celery_app.conf.timezone = 'UTC'
 
 CORS(app)
 create_table()
@@ -68,19 +72,21 @@ def index():
 
 @celery_app.task(name='app.scrape_linkedin_data')
 @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(1))
-def scrape_linkedin_data(url, keywords, location, namespace):
+def scrape_linkedin_data(url, keywords, location, namespace='batch'):
     print(f"Scraping FROM CELERY APP")
     # Register the namespace for progress tracking
     scrape_progress.register_namespace(namespace)
 
     try:
-        # Set state to in_progress and emit
-        scrape_progress.namespaces[namespace].set_state("in_progress")
-        socketio.emit('progress_update', {'message': 'Scraping started...', 'state': scrape_progress.get_state(
-            namespace).get_state(), 'namespace': namespace})
-        
+        if namespace != 'batch':
+            scrape_progress.namespaces[namespace].set_state("in_progress")
+            socketio.emit('progress_update', {'message': 'Scraping started...', 'state': scrape_progress.get_state(
+                namespace).get_state(), 'namespace': namespace})
+
+        # Perform the actual scraping
         linkedin_scraper(url, 0, namespace)
         print("AFTER LINKEDIN SCRAPER")
+
         # Scraping is complete, update the job data after scraping
         job_data = get_job_data(keywords, location)
 
@@ -99,17 +105,18 @@ def scrape_linkedin_data(url, keywords, location, namespace):
                 namespace: namespace
             }
 
-            # Set state to done and emit
-            scrape_progress.namespaces[namespace].set_state("done")
-            socketio.emit('progress_update', {'message': 'All tasks complete.', 'state': scrape_progress.get_state(
-                namespace).get_state(), 'namespace': namespace})
-            socketio.emit('update_plot', data)
+            if namespace != 'batch':
+                scrape_progress.namespaces[namespace].set_state("done")
+                socketio.emit('progress_update', {'message': 'All tasks complete.', 'state': scrape_progress.get_state(
+                    namespace).get_state(), 'namespace': namespace})
+                socketio.emit('update_plot', data)
         else:
             results = {
                 'message': 'Fetching data, please wait...',
                 'namespace': namespace
             }
-            socketio.emit('no_data', results)
+            if namespace != 'batch':
+                socketio.emit('no_data', results)
 
     except requests.exceptions.HTTPError as e:
         print(f"Error occurred while scraping job description: {str(e)}")
@@ -119,7 +126,8 @@ def scrape_linkedin_data(url, keywords, location, namespace):
         print("RetryError occurred. The task will not be retried further.")
         print(traceback.format_exc())
     except Exception as e:
-        print(f"Unexpected error occurred while scraping job description: {str(e)}")
+        print(
+            f"Unexpected error occurred while scraping job description: {str(e)}")
         print(traceback.format_exc())
 
 
@@ -156,13 +164,7 @@ def process_search_request(keywords, location, namespace):
         top_cities_plot = None
 
     if keywords and location:
-        geoid = country_dict.get(location.lower(), None)
-        print(geoid)
-        if geoid is None:
-            print(f"Geoid not found for {location}")
-            return None
-        url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={keywords}&location={location}&geoId={geoid}&trk=public_jobs_jobs-search-bar_search-submit&position=1&pageNum=0&start="
-
+        url = generate_link(keywords, location)
         scrape_linkedin_data.apply_async(
             args=[url, keywords, location, namespace],
             task_id=f'{keywords}_{location}'

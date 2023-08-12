@@ -16,35 +16,38 @@
     </div>
     <div id="searchFormContainer">
         <form id="searchForm">
-            <label for="keywords">Keywords:</label>
-            <input type="text" id="keywordsInput" name="keywords" required>
+            <label for="keywords">Position:</label>
+            <input type="text" id="keywordsInput" placeholder="Job Title" name="keywords" required>
             <br>
             <label for="location">Location:</label>
-            <input type="text" id="locationInput" name="location" required>
+            <input type="text" id="locationInput" placeholder="Country" name="location" required>
             <br>
             <button type="submit">Explore</button>
         </form>
     </div>
     <div id="loader" style="display: none;">
         <div id="progressMessage">
-            Scraping in progress...
+            Fetching the freshest data, meanwhile you can check recent visualisations.<br> They are pretty accurate and will be updated automatically when the freshest data is gathered.
+        </div>
         <div id="progressBarContainer">
             <div class="progress progress-infinite">
                 <div class="progress-bar3">
                 </div>
             </div>
         </div>
-        </div>
+    </div>
+    <div id="visualizationMessage" style="display: none;">
+        We're currently preparing your visualizations. Please hold on, they'll be ready soon.
     </div>
     <div id="noDataMessage" style="display: none;">
-        No data to display.
+        Seems there's no data for this request.
     </div>
     <div id="topSkillsPlotContainer" style="display: none;">
-        <h2>Top Skills Plot:</h2>
+        <!-- <h2>Top Skills:</h2> -->
         <div id="topSkillsPlot"></div>
     </div>
     <div id="topCitiesPlotContainer" style="display: none;">
-        <h2>Top Cities Plot:</h2>
+        <!-- <h2>Top Cities:</h2> -->
         <div id="topCitiesPlot"></div>
     </div>
 
@@ -60,6 +63,10 @@
                     $('#searchForm').submit(function (event) {
                         event.preventDefault();
                         showLoader();
+
+                        // Clear the plots
+                        $('#topSkillsPlotContainer').hide();
+                        $('#topCitiesPlotContainer').hide();
 
                         let keywords = $('#keywordsInput').val();
                         let location = $('#locationInput').val();
@@ -134,6 +141,7 @@
                         $('#progressMessage').text('Scraping in progress...').show();
                         $('#topSkillsPlotContainer').show();
                         $('#topCitiesPlotContainer').show();
+                        $('#visualizationMessage').hide();  // Hide the visualization message here
                     } else if (state === "done") {
                         hideLoader();
                         $('#progressMessage').hide();
