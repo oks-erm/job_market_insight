@@ -1,59 +1,4 @@
-/* Loader */
-/* .loading {
-    --speed-of-animation: 0.9s;
-    --gap: 6px;
-    --first-color: #4c86f9;
-    --second-color: #49a84c;
-    --third-color: #f6bb02;
-    --fourth-color: #f6bb02;
-    --fifth-color: #2196f3;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100px;
-    gap: 6px;
-    height: 100px;
-}
-
-.loading span {
-    width: 4px;
-    height: 50px;
-    background: var(--first-color);
-    animation: scale var(--speed-of-animation) ease-in-out infinite;
-}
-
-.loading span:nth-child(2) {
-    background: var(--second-color);
-    animation-delay: -0.8s;
-}
-
-.loading span:nth-child(3) {
-    background: var(--third-color);
-    animation-delay: -0.7s;
-}
-
-.loading span:nth-child(4) {
-    background: var(--fourth-color);
-    animation-delay: -0.6s;
-}
-
-.loading span:nth-child(5) {
-    background: var(--fifth-color);
-    animation-delay: -0.5s;
-}
-
-@keyframes scale {
-
-    0%,
-    40%,
-    100% {
-        transform: scaleY(0.05);
-    }
-
-    20% {
-        transform: scaleY(1);
-    }
-} */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
 :root {
     --green: #3cc33c;
@@ -62,6 +7,103 @@
     --light-blue: #add8e6;
     --purple: #800080;
     --red: #ff0000;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f4f4f8;
+    padding: 20px 0;
+}
+
+h1 {
+    color: #4a4a4a;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 2.5em;
+}
+
+.header-wrapper {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+
+#header {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+}
+
+.logo {
+    width: 50px;
+    height: 50px;
+    background: url('../images/logo.png'),
+            linear-gradient(135deg,#beebf9, #e6abff);
+    background-size: cover, contain;
+    background-repeat: no-repeat;
+    margin-right: 15px;
+    border-radius: 50px;
+}
+
+#searchFormContainer {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+}
+
+#searchForm {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+#searchForm label {
+    font-weight: 600;
+}
+
+#searchForm input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button[type="submit"] {
+    background: linear-gradient(135deg, #beebf9, #b382f8, #f8dcfc);
+    color: rgb(255, 255, 255);
+    font-size: 1.1em;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button[type="submit"]:hover {
+    background: linear-gradient(135deg, #fadcfc,#b382f8, #beebf9);
+}
+
+#loader,
+#noDataMessage,
+#topSkillsPlotContainer,
+#topCitiesPlotContainer {
+    max-width: 900px;
+    margin: 15px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+}
+
+#loader {
+    text-align: center;
+}
+
+#noDataMessage {
+    color: #888;
+    text-align: center;
 }
 
 .progressBarContainer {
