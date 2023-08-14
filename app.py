@@ -3,7 +3,6 @@ from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from celery import Celery
 import requests
-from datetime import timedelta
 import secrets
 import traceback
 from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
@@ -112,7 +111,7 @@ def scrape_linkedin_data(url, keywords, location, namespace='batch'):
                 socketio.emit('update_plot', data)
         else:
             results = {
-                'message': 'Fetching data, please wait...',
+                'message': 'No data found.',
                 'namespace': namespace
             }
             if namespace != 'batch':
@@ -143,7 +142,7 @@ def handle_search_event(data):
 
 
 def process_search_request(keywords, location, namespace):
-    socketio.emit('show_progress_bar', namespace=namespace)
+    # socketio.emit('show_progress_bar', namespace=namespace)
 
     # Get existing job data from the database
     job_data = get_job_data(keywords, location)

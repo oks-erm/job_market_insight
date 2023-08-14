@@ -71,16 +71,19 @@
                         let keywords = $('#keywordsInput').val();
                         let location = $('#locationInput').val();
                         socket.emit('search', { keywords: keywords, location: location });
+                        showVisualizationMessage();
                     });
                 });
 
+                socket.on('progress_update', handleProgressEvent);
                 socket.on('existing_data_plots', handleExistingPlotData);
                 socket.on('update_plot', handleUpdatedPlotData);
 
                 socket.on('no_data', function () {
                     $('#loader').show();
-                    $('#progressMessage').show()
-                    $('#progressMessage').text('Fetching data, please wait...');
+                    showVisualizationMessage();
+                    $('#topSkillsPlotContainer').hide();
+                    $('#topCitiesPlotContainer').hide();
                 });
 
                 function handleExistingPlotData(data) {
@@ -104,7 +107,7 @@
                             let topCitiesPlot = JSON.parse(data[citiesKey]);
 
                             if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
-                                
+                                hideVisualizationMessage();
                                 $('#topSkillsPlotContainer').show();
                                 $('#topCitiesPlotContainer').show();
 
@@ -117,14 +120,15 @@
                                     Plotly.react('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
                                 }
                             } else {
-                                showNoDataMessage();
+                                showVisualizationMessage();
                             }
                         } catch (error) {
                             console.error('Error parsing JSON data:', error);
                             showNoDataMessage();
                         }
                     } else {
-                        showNoDataMessage();
+                        console.log('No data received.');
+                        showVisualizationMessage();
                     }
                 }
 
@@ -134,17 +138,17 @@
                         Array.isArray(plotData.data) && plotData.data.length > 0;
                 }
 
+                function handleProgressEvent(data) {
+                    console.log('Progress update received:', data.message);
+                    handleProgressUpdate(data.state);
+                }
+
                 function handleProgressUpdate(state) {
                     if (state === "in_progress") {
                         showLoader();
-                        console.log('in_progress')
-                        $('#progressMessage').text('Scraping in progress...').show();
-                        $('#topSkillsPlotContainer').show();
-                        $('#topCitiesPlotContainer').show();
-                        $('#visualizationMessage').hide();  // Hide the visualization message here
                     } else if (state === "done") {
                         hideLoader();
-                        $('#progressMessage').hide();
+                        hideVisualizationMessage();
                     }
                 }
 
@@ -160,6 +164,14 @@
                 function showNoDataMessage() {
                     $('#noDataMessage').show();
                     hideLoader();
+                }
+
+                function showVisualizationMessage() {
+                    $('#visualizationMessage').show();
+                }
+
+                function hideVisualizationMessage() {
+                    $('#visualizationMessage').hide();
                 }
 
             });
