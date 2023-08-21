@@ -143,12 +143,8 @@ def linkedin_scraper(webpage, page_number, namespace):
                 linkedin_scraper(webpage, page_number, namespace)
             else:
                 print('Scraping completed!')
-                # Set the scraping complete flag for the specific client
-                # scraping_complete[namespace] = True
         else:
             print('No new jobs to scrape. Scraping completed!')
-            # Set the scraping complete flag for the specific client
-            # scraping_complete[namespace] = True
     except Exception as e:
         print(f"An error occurred during scraping: {e}")
         raise e

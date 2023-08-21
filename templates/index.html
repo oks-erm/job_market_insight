@@ -4,6 +4,7 @@
 <head>
     <title>Job Search</title>
     <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 
@@ -11,16 +12,19 @@
     <div class="header-wrapper">
         <div id="header">
             <div class="logo"></div>
-            <h1>Job Market Insights</h1>
+            <h1>IT Job Market Insights</h1>
+        </div>
+        <div>
+            <p class="lead">Explore IT jobs market trends in Europe, the USA and the UK.</p>
         </div>
     </div>
+    
     <div id="searchFormContainer">
         <form id="searchForm">
-            <label for="keywords">Position:</label>
-            <input type="text" id="keywordsInput" placeholder="Job Title" name="keywords" required>
-            <br>
-            <label for="location">Location:</label>
-            <input type="text" id="locationInput" placeholder="Country" name="location" required>
+            <label for="keywordsInput">Job Title:</label>
+            <input type="text" id="keywordsInput" placeholder="Job Title" name="jobs" required>
+            <label for="locationInput">Location:</label>
+            <input type="text" id="locationInput" placeholder="Location" name="location" required>
             <br>
             <button type="submit">Explore</button>
         </form>
@@ -53,8 +57,24 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
     <script>
+        function populateAutocompleteInputs() {
+                $.get("/get-available-data", function (data) {
+                    let jobs = data.available_jobs;
+                    let locations = data.available_locations;
+
+                    $('#keywordsInput').autocomplete({
+                        source: jobs
+                    });
+                    $('#locationInput').autocomplete({
+                        source: locations
+                    });
+                });
+            }
+
         $(document).ready(function () {
+                populateAutocompleteInputs();
                 let socket = io();
 
                 socket.on('connect', function () {
@@ -70,21 +90,15 @@
 
                         let keywords = $('#keywordsInput').val();
                         let location = $('#locationInput').val();
+
                         socket.emit('search', { keywords: keywords, location: location });
                         showVisualizationMessage();
                     });
                 });
 
-                socket.on('progress_update', handleProgressEvent);
+                // socket.on('progress_update', handleProgressEvent);
                 socket.on('existing_data_plots', handleExistingPlotData);
-                socket.on('update_plot', handleUpdatedPlotData);
-
-                socket.on('no_data', function () {
-                    $('#loader').show();
-                    showVisualizationMessage();
-                    $('#topSkillsPlotContainer').hide();
-                    $('#topCitiesPlotContainer').hide();
-                });
+                // socket.on('update_plot', handleUpdatedPlotData);
 
                 function handleExistingPlotData(data) {
                     console.log('Existing data plots received.');
@@ -98,58 +112,35 @@
                 }
 
                 function handlePlotData(data, plotMethod) {
-                    let skillsKey = (plotMethod === "newPlot") ? 'top_skills_plot' : 'new_top_skills_json';
-                    let citiesKey = (plotMethod === "newPlot") ? 'top_cities_plot' : 'new_top_cities_json';
+                if (data['top_skills_plot'] && data['top_cities_plot']) {
+                    try {
+                        let topSkillsPlot = JSON.parse(data['top_skills_plot']);
+                        let topCitiesPlot = JSON.parse(data['top_cities_plot']);
 
-                    if (data[skillsKey] && data[citiesKey]) {
-                        try {
-                            let topSkillsPlot = JSON.parse(data[skillsKey]);
-                            let topCitiesPlot = JSON.parse(data[citiesKey]);
+                        if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
+                            hideLoader();
+                            $('#topSkillsPlotContainer').show();
+                            $('#topCitiesPlotContainer').show();
 
-                            if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
-                                hideVisualizationMessage();
-                                $('#topSkillsPlotContainer').show();
-                                $('#topCitiesPlotContainer').show();
-
-                                if (plotMethod === "newPlot") {
-                                    Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
-                                    Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
-                                } else if (plotMethod === "react") {
-                                    hideLoader();
-                                    Plotly.react('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
-                                    Plotly.react('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
-                                }
-                            } else {
-                                showVisualizationMessage();
-                            }
-                        } catch (error) {
-                            console.error('Error parsing JSON data:', error);
-                            showNoDataMessage();
+                            Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
+                            Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
+                        } else {
+                            showVisualizationMessage();
                         }
-                    } else {
-                        console.log('No data received.');
-                        showVisualizationMessage();
+                    } catch (error) {
+                        console.error('Error parsing JSON data:', error);
+                        showNoDataMessage();
                     }
+                } else {
+                    console.log('No data received.');
+                    showVisualizationMessage();
                 }
+            }
 
                 function validatePlotData(plotData) {
                     return typeof plotData === 'object' && plotData !== null &&
                         plotData.hasOwnProperty('data') && plotData.hasOwnProperty('layout') &&
                         Array.isArray(plotData.data) && plotData.data.length > 0;
-                }
-
-                function handleProgressEvent(data) {
-                    console.log('Progress update received:', data.message);
-                    handleProgressUpdate(data.state);
-                }
-
-                function handleProgressUpdate(state) {
-                    if (state === "in_progress") {
-                        showLoader();
-                    } else if (state === "done") {
-                        hideLoader();
-                        hideVisualizationMessage();
-                    }
                 }
 
                 function showLoader() {
@@ -173,7 +164,6 @@
                 function hideVisualizationMessage() {
                     $('#visualizationMessage').hide();
                 }
-
             });
 
     </script>

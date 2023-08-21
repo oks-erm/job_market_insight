@@ -26,7 +26,7 @@ country_dict = {
     'hungary': '100288700',
     'slovakia': '103119917',
     'slovenia': '106137034',
-    'sroatia': '104688944',
+    'croatia': '104688944',
     'romania': '106670623',
     'bulgaria': '105333783',
     'estonia': '102974008',
