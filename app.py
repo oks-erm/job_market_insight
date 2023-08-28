@@ -33,7 +33,6 @@ celery_app = Celery('celery_app',
                     )
 celery_app.conf.beat_schedule = create_beat_schedule(tech_jobs, country_dict)
 celery_app.conf.timezone = 'UTC'
-celery_app.autodiscover_tasks(['app'])
 
 CORS(app)
 create_table()
@@ -54,9 +53,26 @@ def get_available_data():
 
 @celery_app.task(name='app.scrape_linkedin_data')
 @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(1))
-def scrape_linkedin_data(url, keywords, location, namespace='batch'):
+def scrape_linkedin_data(position, country_name, *args, **kwargs):
     print(f"Scraping FROM CELERY APP")
-    linkedin_scraper(url, 0, namespace)
+    url = generate_link(position, country_name)
+    try:
+        linkedin_scraper(url, 0)
+    except requests.exceptions.HTTPError as e:
+        print(f"Error occurred while scraping job description: {str(e)}")
+        print(traceback.format_exc())
+        raise e
+    except RetryError as e:
+        print("RetryError occurred. The task will not be retried further.")
+        print(traceback.format_exc())
+    except TypeError as e: 
+        print(f"TypeError occurred while scraping: {str(e)}")
+        print(traceback.format_exc())
+        raise e
+    except Exception as e:
+        print(
+            f"Unexpected error occurred while scraping job description: {str(e)}")
+        print(traceback.format_exc())
 
 
 @socketio.on('search')
@@ -64,11 +80,12 @@ def handle_search_event(data):
     keywords = data.get('keywords')
     location = data.get('location')
     namespace = request.sid
-    response = process_search_request(keywords, location, namespace)
+    response = process_search_request(keywords, location)
+    print(response)
     emit('existing_data_plots', response, namespace=namespace)
 
 
-def process_search_request(keywords, location, namespace):
+def process_search_request(keywords, location):
     # Get existing job data from the database
     job_data = get_job_data(keywords, location)
 
@@ -90,6 +107,9 @@ def process_search_request(keywords, location, namespace):
         'top_skills_plot': top_skills_plot.to_json() if top_skills_plot is not None else None,
         'top_cities_plot': top_cities_plot.to_json() if top_cities_plot is not None else None,
     }
+
+
+celery_app.autodiscover_tasks(['app'])
 
 
 if __name__ == '__main__':

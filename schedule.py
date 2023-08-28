@@ -18,7 +18,6 @@ def create_beat_schedule(positions, countries):
             schedule[task_name] = {
                 'task': 'app.scrape_linkedin_data',
                 'schedule': timedelta(hours=1),
-                'args': (generate_link(position, country_name),
-                         position, country_name, f'{position}_{country_name}')
+                'args': (position, country_name)
             }
     return schedule

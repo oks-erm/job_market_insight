@@ -77,7 +77,7 @@ def scrape_job_description(job_link):
 
 
 # Main scraper function
-def linkedin_scraper(webpage, page_number, namespace):
+def linkedin_scraper(webpage, page_number):
     print("Scraping function called!!!!!! LINKEDIN_SCRAPER")
     try:
         create_table()
@@ -140,7 +140,7 @@ def linkedin_scraper(webpage, page_number, namespace):
         if job_count > 0: 
             if page_number < 1000:
                 page_number = page_number + 25
-                linkedin_scraper(webpage, page_number, namespace)
+                linkedin_scraper(webpage, page_number)
             else:
                 print('Scraping completed!')
         else:

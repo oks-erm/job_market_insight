@@ -1,10 +1,5 @@
 country_dict = {
     'united kingdom': '101165590',
-    'uk': '101165590',
-    'united states': '103644278',
-    'us': '103644278',
-    'canada': '101174742',
-    'australia': '101452733',
     'france': '105015875',
     'spain': '105646813',
     'italy': '103350119',
@@ -34,3 +29,7 @@ country_dict = {
     'lithuania': '101464403',
     'luxembourg': '104042105',
 }
+
+# 'united states': '103644278',
+# 'canada': '101174742',
+# 'australia': '101452733',

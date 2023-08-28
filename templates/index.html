@@ -31,7 +31,7 @@
     </div>
     <div id="loader" style="display: none;">
         <div id="progressMessage">
-            Fetching the freshest data, meanwhile you can check recent visualisations.<br> They are pretty accurate and will be updated automatically when the freshest data is gathered.
+            Hold on, fetching the freshest data.
         </div>
         <div id="progressBarContainer">
             <div class="progress progress-infinite">
@@ -39,9 +39,6 @@
                 </div>
             </div>
         </div>
-    </div>
-    <div id="visualizationMessage" style="display: none;">
-        We're currently preparing your visualizations. Please hold on, they'll be ready soon.
     </div>
     <div id="noDataMessage" style="display: none;">
         Seems there's no data for this request.
@@ -92,7 +89,6 @@
                         let location = $('#locationInput').val();
 
                         socket.emit('search', { keywords: keywords, location: location });
-                        showVisualizationMessage();
                     });
                 });
 
@@ -125,7 +121,8 @@
                             Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
                             Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
                         } else {
-                            showVisualizationMessage();
+                            console.log('Invalid plot data received.');
+                            showNoDataMessage();
                         }
                     } catch (error) {
                         console.error('Error parsing JSON data:', error);
@@ -133,7 +130,7 @@
                     }
                 } else {
                     console.log('No data received.');
-                    showVisualizationMessage();
+                    showNoDataMessage();
                 }
             }
 
@@ -155,14 +152,6 @@
                 function showNoDataMessage() {
                     $('#noDataMessage').show();
                     hideLoader();
-                }
-
-                function showVisualizationMessage() {
-                    $('#visualizationMessage').show();
-                }
-
-                function hideVisualizationMessage() {
-                    $('#visualizationMessage').hide();
                 }
             });
 
