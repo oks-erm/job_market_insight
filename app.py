@@ -57,7 +57,7 @@ def scrape_linkedin_data(position, country_name, *args, **kwargs):
     print(f"Scraping FROM CELERY APP")
     url = generate_link(position, country_name)
     try:
-        linkedin_scraper(url, 0)
+        linkedin_scraper(url)
     except requests.exceptions.HTTPError as e:
         print(f"Error occurred while scraping job description: {str(e)}")
         print(traceback.format_exc())
@@ -82,7 +82,7 @@ def handle_search_event(data):
     namespace = request.sid
     response = process_search_request(keywords, location)
     print(response)
-    emit('existing_data_plots', response, namespace=namespace)
+    emit('existing_data_plots', response)
 
 
 def process_search_request(keywords, location):

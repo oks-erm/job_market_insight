@@ -89,12 +89,12 @@
                         let location = $('#locationInput').val();
 
                         socket.emit('search', { keywords: keywords, location: location });
+
+                        // socket.on('progress_update', handleProgressEvent);
+                        socket.on('existing_data_plots', handleExistingPlotData);
+                        // socket.on('update_plot', handleUpdatedPlotData);
                     });
                 });
-
-                // socket.on('progress_update', handleProgressEvent);
-                socket.on('existing_data_plots', handleExistingPlotData);
-                // socket.on('update_plot', handleUpdatedPlotData);
 
                 function handleExistingPlotData(data) {
                     console.log('Existing data plots received.');
@@ -109,6 +109,7 @@
 
                 function handlePlotData(data, plotMethod) {
                 if (data['top_skills_plot'] && data['top_cities_plot']) {
+                    console.log(data);
                     try {
                         let topSkillsPlot = JSON.parse(data['top_skills_plot']);
                         let topCitiesPlot = JSON.parse(data['top_cities_plot']);

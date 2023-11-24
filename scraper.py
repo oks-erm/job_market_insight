@@ -43,6 +43,28 @@ def fetch_proxies(url='https://www.sslproxies.org/'):
 
 
 PROXIES = fetch_proxies()
+print("Total Proxies:", len(PROXIES))
+
+
+def verify_proxies(proxies):
+    working_proxies = []
+    test_url = 'https://httpbin.org/ip'
+
+    for proxy in proxies:
+        try:
+            response = requests.get(
+                test_url, proxies={'http': proxy, 'https': proxy}, timeout=5)
+            if response.status_code == 200:
+                working_proxies.append(proxy)
+                print("Working Proxy:", proxy)
+        except:
+            pass
+
+    return working_proxies
+
+
+VERIFIED_PROXIES = verify_proxies(PROXIES)
+print("Total Verified Proxies:", len(VERIFIED_PROXIES))
 
 
 def get_request_headers():
@@ -52,7 +74,18 @@ def get_request_headers():
 
 
 def get_proxy():
-    return random.choice(PROXIES)
+    global VERIFIED_PROXIES
+
+    if not VERIFIED_PROXIES:
+        print("Fetching new proxies...")
+        new_proxies = fetch_proxies()
+        VERIFIED_PROXIES = verify_proxies(new_proxies)
+        print("Total Verified Proxies:", len(VERIFIED_PROXIES))
+
+        if not VERIFIED_PROXIES:
+            raise ValueError("No verified proxies available after refreshing")
+
+    return random.choice(VERIFIED_PROXIES)
 
 
 # filter skills from job description
@@ -74,13 +107,16 @@ def get_job_id(job_link):
 
 # scrape job description and industry visiting job link
 def scrape_job_description(job_link):
+    global VERIFIED_PROXIES
     retry_count = 0
     timeout = RETRY_TIMEOUT
+    
     while retry_count < MAX_RETRIES:
         try:
-            response = requests.get(job_link, headers=get_request_headers(), proxies={'http': get_proxy()})
+            proxy = get_proxy()
+            response = requests.get(job_link, headers=get_request_headers(), proxies={
+                                    'http': proxy, 'https': proxy})
             response.raise_for_status()
-            print(response.status_code)
 
             if response.status_code == 200:
                 soup = BeautifulSoup(response.content, 'html.parser')
@@ -105,7 +141,18 @@ def scrape_job_description(job_link):
                     print('4th child item not found')
                 return list(set(req_skills)), industries
 
+        except (requests.exceptions.ProxyError, requests.exceptions.SSLError):
+            print("Proxy error encountered. Switching proxy.")
+            VERIFIED_PROXIES.remove(proxy) 
+            if not VERIFIED_PROXIES:
+                print("No more working proxies available.")
+                break
+            retry_count += 1
+            continue
         except requests.HTTPError as e:
+            if response.status_code == 451:
+                print("HTTP 451 Error: Access Blocked for Legal Reasons")
+                break
             if response.status_code in [429, 503]:
                 print(
                     f"{response.status_code} Error. Retrying after {timeout} seconds...")
@@ -127,14 +174,18 @@ def scrape_job_description(job_link):
 
 
 # Main scraper function
-def linkedin_scraper(webpage, max_pages=1000):
+def linkedin_scraper(webpage, max_pages=10):
     print("Scraping function called!!!!!! LINKEDIN_SCRAPER")
     create_table()
-    while page_number < max_pages:
-        next_page = webpage + str(page_number)
+    start = 0
+    proxy = get_proxy()
+    while start < max_pages:
+        next_page = webpage + str(start)
         try:
             response = requests.get(next_page, headers=get_request_headers(), proxies={
-                                    'http': get_proxy()})
+                                    'http': proxy, 'https': proxy})
+            response.raise_for_status()
+            print("Status Code:", response.status_code)
             soup = BeautifulSoup(response.content, 'html.parser')
 
             jobs = soup.find_all(
@@ -190,7 +241,7 @@ def linkedin_scraper(webpage, max_pages=1000):
             print(f'Scraped {job_count} jobs from the page!')
 
             if job_count > 0:
-                page_number += 25
+                start += 1
             else:
                 print('No new jobs to scrape. Scraping completed!')
                 break
