@@ -2,8 +2,10 @@ import psycopg2
 import os
 from datetime import datetime
 from urllib import parse
+from fuzzywuzzy import fuzz
 import pandas as pd
 from tenacity import retry, wait_fixed, stop_after_attempt
+from skills import tech_jobs
 if os.path.exists('env.py'):
     import env
 
@@ -177,7 +179,16 @@ def get_job_data(keywords=None, location=None):
         )
         cur = conn.cursor()
 
-        # Prepare the SQL query
+        # fuzzy matching to find related job titles
+        matched_keywords = []
+        if keywords:
+            for title in tech_jobs:
+                score = fuzz.ratio(keywords, title)
+                if score > 70:
+                    matched_keywords.append(title)
+
+        print(f"Matched keywords: {matched_keywords}")
+
         query = '''
             SELECT j.job_id, j.title, j.company, l.location_name as location, c.category_name as category, j.date, j.skills, j.link
             FROM jobs j
@@ -185,15 +196,24 @@ def get_job_data(keywords=None, location=None):
             JOIN job_categories c ON j.category_id = c.id
         '''
 
-        # Check if keywords and/or location are provided to add filtering conditions to the query
-        if keywords and location:
-            query += f"WHERE j.title ILIKE '%{keywords}%' AND l.location_name ILIKE '%{location}%'"
-        elif keywords:
-            query += f"WHERE j.title ILIKE '%{keywords}%'"
-        elif location:
-            query += f"WHERE l.location_name ILIKE '%{location}%'"
+        conditions = []
+        params = []
 
-        cur.execute(query)
+        if matched_keywords:
+            title_conditions = ' OR '.join(
+                [f"j.title ILIKE %s" for _ in matched_keywords])
+            conditions.append(f"({title_conditions})")
+            params.extend(['%' + kw + '%' for kw in matched_keywords])
+
+        if location:
+            conditions.append("l.location_name ILIKE %s")
+            params.append('%' + location + '%')
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+
+        # Use parameterized queries for safety
+        cur.execute(query, params)
 
         job_data = cur.fetchall()
 

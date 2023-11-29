@@ -5,12 +5,12 @@ from celery import Celery
 import requests
 import secrets
 import traceback
-from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
 import plots
 from scraper import linkedin_scraper
 from db import get_job_data, create_table
 from geoid import country_dict
 from skills import tech_jobs
+from celery.exceptions import MaxRetriesExceededError
 from schedule import create_beat_schedule, generate_link
 
 
@@ -51,35 +51,31 @@ def get_available_data():
     }
 
 
-@celery_app.task(name='app.scrape_linkedin_data')
-@retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(1))
-def scrape_linkedin_data(position, country_name, *args, **kwargs):
-    print(f"Scraping FROM CELERY APP")
+@celery_app.task(bind=True, name='app.scrape_linkedin_data', max_retries=3)
+def scrape_linkedin_data(self, position, country_name, *args, **kwargs):
+    print(f"Scraping FROM CELERY APP for {position} in {country_name}")
     url = generate_link(position, country_name)
+
     try:
         linkedin_scraper(url)
     except requests.exceptions.HTTPError as e:
         print(f"Error occurred while scraping job description: {str(e)}")
         print(traceback.format_exc())
         raise e
-    except RetryError as e:
-        print("RetryError occurred. The task will not be retried further.")
-        print(traceback.format_exc())
-    except TypeError as e: 
-        print(f"TypeError occurred while scraping: {str(e)}")
-        print(traceback.format_exc())
-        raise e
     except Exception as e:
         print(
             f"Unexpected error occurred while scraping job description: {str(e)}")
         print(traceback.format_exc())
+        try:
+            self.retry(exc=e, countdown=30)
+        except MaxRetriesExceededError:
+            print("Max retries exceeded for scraping task.")
 
 
 @socketio.on('search')
 def handle_search_event(data):
     keywords = data.get('keywords')
     location = data.get('location')
-    namespace = request.sid
     response = process_search_request(keywords, location)
     print(response)
     emit('existing_data_plots', response)

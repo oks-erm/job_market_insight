@@ -1,3 +1,5 @@
+from celery import chain
+from celery.schedules import crontab
 from datetime import timedelta
 from geoid import country_dict
 
@@ -17,7 +19,7 @@ def create_beat_schedule(positions, countries):
             task_name = f'scrape-{position}-in-{country_name}'
             schedule[task_name] = {
                 'task': 'app.scrape_linkedin_data',
-                'schedule': timedelta(hours=1),
+                'schedule': timedelta(hours=3),
                 'args': (position, country_name)
             }
     return schedule
