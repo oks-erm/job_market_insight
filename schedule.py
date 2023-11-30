@@ -1,6 +1,6 @@
-from celery import chain
-from celery.schedules import crontab
+from random import shuffle
 from datetime import timedelta
+from itertools import product
 from geoid import country_dict
 
 
@@ -13,13 +13,18 @@ def generate_link(keyword, location):
 
 
 def create_beat_schedule(positions, countries):
-    schedule = {}
-    for position in positions:
-        for country_name, country_code in countries.items():
-            task_name = f'scrape-{position}-in-{country_name}'
-            schedule[task_name] = {
-                'task': 'app.scrape_linkedin_data',
-                'schedule': timedelta(hours=3),
-                'args': (position, country_name)
-            }
+    tasks = []
+    for position, (country_name, country_code) in product(positions, countries.items()):
+        task_name = f'scrape-{position}-in-{country_name}'
+        task_info = {
+            'task': 'app.scrape_linkedin_data',
+            'schedule': timedelta(hours=5),
+            'args': (position, country_name)
+        }
+        tasks.append((task_name, task_info))
+
+    # Shuffle the list of tasks
+    shuffle(tasks)
+    schedule = dict(tasks)
+
     return schedule

@@ -7,6 +7,7 @@ from geotext import GeoText
 import psycopg2
 from urllib import parse
 import os
+from db import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 if os.path.exists('env.py'):
     import env  # noqa # pylint: disable=unused-import
 
@@ -131,53 +132,6 @@ def get_top_skills(dataframe, max_skills):
     return top_skills_df
 
 
-# def create_job_titles_plot(df,  keywords=None, location=None):
-#     # Create a DataFrame for the most common job titles and their frequencies
-#     job_title_counts = df['title'].value_counts()
-#     top_job_titles_df = pd.DataFrame(
-#         {'Job Title': job_title_counts.index, 'Frequency': job_title_counts.values})
-
-#     # Sort the DataFrame in descending order by frequency
-#     top_job_titles_df = top_job_titles_df.sort_values(
-#         by='Frequency', ascending=False)
-#     # Select the top 10 most common job titles
-#     top_job_titles_df = top_job_titles_df.head(10)
-#     # Sort the DataFrame again to place the most popular job titles on top
-#     top_job_titles_df = top_job_titles_df.sort_values(
-#         by='Frequency', ascending=True)
-
-#     # Truncate job titles
-#     max_title_length = 40
-#     top_job_titles_df['Truncated Job Title'] = top_job_titles_df['Job Title'].apply(
-#         lambda x: x[:max_title_length] if len(x) > max_title_length else x)
-
-#     fig = px.bar(top_job_titles_df, x='Frequency', y='Truncated Job Title', orientation='h',
-#                  labels={'Frequency': 'Frequency',
-#                          'Truncated Job Title': 'Job Title'},
-#                  title='Top 10 Most Common Job Titles',
-#                  color_discrete_sequence=['#1f77b4'],
-#                  height=600,
-#                  width=800,
-#                  template='plotly_dark',
-#                  )
-
-#     # Appearance of the bars
-#     fig.update_traces(
-#         # Add black outline to the bars
-#         marker=dict(line=dict(width=1, color='black')),
-#         showlegend=False,
-#     )
-
-#     # Adjust the layout to display all 10 job title labels on the y-axis without being cut off
-#     fig.update_layout(
-#         yaxis=dict(categoryorder='total ascending', showticklabels=True),
-#         margin=dict(l=50, r=10, t=50, b=10),  # Reduce the margins
-#         title_x=0.5,  # Center the title along the x-axis
-#     )
-
-#     return fig
-
-
 def create_top_cities_plot(df, max_cities, keywords=None, location=None, fig=None):
     # Get the top cities DataFrame
     top_cities_df = get_top_cities(df, max_cities)
@@ -233,3 +187,62 @@ def get_top_cities(df, max_cities):
     top_cities = top_cities.sort_values(by='job_count', ascending=True)
 
     return top_cities
+
+
+def create_job_distribution_plot(search_term, excluded_country):
+    conn = psycopg2.connect(
+        host=DB_HOST, port=DB_PORT, database=DB_NAME, user=DB_USER, password=DB_PASSWORD
+    )
+    cur = conn.cursor()
+
+    query = f'''
+        SELECT j.job_id, j.title, l.location_name as location
+        FROM jobs j
+        JOIN locations l ON j.location_id = l.id
+        WHERE j.title ILIKE %s AND l.location_name NOT ILIKE %s
+    '''
+    cur.execute(query, ('%' + search_term + '%', '%' + excluded_country + '%'))
+    job_data = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    df = pd.DataFrame(job_data, columns=["job_id", "title", "location"])
+
+    df['country'] = df['location'].apply(lambda x: x.split(',')[-1].strip())
+    df = df[df['country'] != excluded_country]
+
+    df = df[df['title'].str.contains(search_term, case=False, na=False)]
+    print(df.head())
+
+    # Group and count jobs by country
+    country_counts = df['country'].value_counts().reset_index()
+    country_counts.columns = ['country', 'job_count']
+
+    # Filter out countries with less than 5 jobs
+    country_counts = country_counts[country_counts['job_count'] >= 5]
+    top_countries = country_counts.head(15)
+
+ # Create the plot
+    fig = px.bar(
+        top_countries,
+        x='job_count',
+        y='country',
+        orientation='h',
+        title=f'Job Distribution for "{search_term}" Outside {excluded_country}',
+        labels={'job_count': 'Number of Jobs', 'country': 'Country'},
+        height=600,
+        width=800
+    )
+
+    fig.update_traces(
+        marker=dict(line=dict(width=1, color='black')), 
+        hoverinfo='y+x' 
+    )
+
+    fig.update_layout(
+        yaxis=dict(categoryorder='total ascending', showticklabels=True),
+        margin=dict(l=50, r=10, t=50, b=10), 
+        title_x=0.5, 
+    )
+
+    return fig

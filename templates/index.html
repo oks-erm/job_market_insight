@@ -9,47 +9,59 @@
 </head>
 
 <body>
-    <div class="header-wrapper">
-        <div id="header">
-            <div class="logo"></div>
-            <h1>IT Job Market Insights</h1>
+    <div class="content-wrapper">
+        <div class="header-wrapper">
+            <div id="header">
+                <div class="logo"></div>
+                <h1>IT Job Market Insights</h1>
+            </div>
+            <div>
+                <p class="lead">Explore IT jobs market trends in Europe and the UK</p>
+            </div>
         </div>
-        <div>
-            <p class="lead">Explore IT jobs market trends in Europe</p>
+        
+        <div id="searchFormContainer">
+            <form id="searchForm">
+                <label for="keywordsInput">Job Title:</label>
+                <input type="text" id="keywordsInput" placeholder="Job Title" name="jobs" required>
+                <label for="locationInput">Location:</label>
+                <input type="text" id="locationInput" placeholder="Location" name="location" required>
+                <br>
+                <button type="submit">Explore</button>
+            </form>
         </div>
-    </div>
-    
-    <div id="searchFormContainer">
-        <form id="searchForm">
-            <label for="keywordsInput">Job Title:</label>
-            <input type="text" id="keywordsInput" placeholder="Job Title" name="jobs" required>
-            <label for="locationInput">Location:</label>
-            <input type="text" id="locationInput" placeholder="Location" name="location" required>
-            <br>
-            <button type="submit">Explore</button>
-        </form>
-    </div>
-    <div id="loader" style="display: none;">
-        <div id="progressMessage">
-            Hold on, fetching the freshest data.
-        </div>
-        <div id="progressBarContainer">
-            <div class="progress progress-infinite">
-                <div class="progress-bar3">
+        <div id="loader" style="display: none;">
+            <div id="progressMessage">
+                Hold on, fetching the freshest data.
+            </div>
+            <div id="progressBarContainer">
+                <div class="progress progress-infinite">
+                    <div class="progress-bar3">
+                    </div>
                 </div>
             </div>
         </div>
+        <div id="noDataMessage" style="display: none;">
+            Seems there's no data for this request.
+        </div>
+        <div id="topSkillsPlotContainer" style="display: none;">
+            <!-- <h2>Top Skills:</h2> -->
+            <div id="topSkillsPlot"></div>
+        </div>
+        <div id="topCitiesPlotContainer" style="display: none;">
+            <!-- <h2>Top Cities:</h2> -->
+            <div id="topCitiesPlot"></div>
+        </div>
+        <div id = "jobsDistributionPlotContainer" style="display: none;">
+            <!-- <h2>Job distribution by country</h2> -->
+            <div id="jobsDistributionPlot"></div>
+        </div>
     </div>
-    <div id="noDataMessage" style="display: none;">
-        Seems there's no data for this request.
-    </div>
-    <div id="topSkillsPlotContainer" style="display: none;">
-        <!-- <h2>Top Skills:</h2> -->
-        <div id="topSkillsPlot"></div>
-    </div>
-    <div id="topCitiesPlotContainer" style="display: none;">
-        <!-- <h2>Top Cities:</h2> -->
-        <div id="topCitiesPlot"></div>
+    <div id="footer">
+        <p>Created by <a href="https://okserm.com">Oksana Erm</a> | 2023</p>
+        <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button"
+            data-slug="okserm" data-color="#FFDD00" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee"
+            data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
@@ -84,15 +96,15 @@
                         // Clear the plots
                         $('#topSkillsPlotContainer').hide();
                         $('#topCitiesPlotContainer').hide();
+                        $('#jobsDistributionPlotContainer').hide();
 
                         let keywords = $('#keywordsInput').val();
                         let location = $('#locationInput').val();
 
                         socket.emit('search', { keywords: keywords, location: location });
 
-                        // socket.on('progress_update', handleProgressEvent);
                         socket.on('existing_data_plots', handleExistingPlotData);
-                        // socket.on('update_plot', handleUpdatedPlotData);
+
                     });
                 });
 
@@ -108,19 +120,22 @@
                 }
 
                 function handlePlotData(data, plotMethod) {
-                if (data['top_skills_plot'] && data['top_cities_plot']) {
+                if (data['top_skills_plot'] && data['top_cities_plot'] && data['jobs_distribution_plot']) {
                     console.log(data);
                     try {
                         let topSkillsPlot = JSON.parse(data['top_skills_plot']);
                         let topCitiesPlot = JSON.parse(data['top_cities_plot']);
+                        let jobsDistributionPlot = JSON.parse(data['jobs_distribution_plot']);
 
                         if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
                             hideLoader();
                             $('#topSkillsPlotContainer').show();
                             $('#topCitiesPlotContainer').show();
+                            $('#jobsDistributionPlotContainer').show();
 
                             Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
                             Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
+                            Plotly.newPlot('jobsDistributionPlot', jobsDistributionPlot.data, jobsDistributionPlot.layout);
                         } else {
                             console.log('Invalid plot data received.');
                             showNoDataMessage();

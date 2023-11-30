@@ -6,6 +6,7 @@ import requests
 import secrets
 import traceback
 import plots
+import pandas as pd
 from scraper import linkedin_scraper
 from db import get_job_data, create_table
 from geoid import country_dict
@@ -90,6 +91,7 @@ def process_search_request(keywords, location):
         return {
             'top_skills_plot': None,
             'top_cities_plot': None,
+            'jobs_distribution_plot': None,
         }
 
     print("Data for the request is found.")
@@ -98,10 +100,13 @@ def process_search_request(keywords, location):
         search_dataframe, keywords, location)
     top_cities_plot = plots.create_top_cities_plot(
         search_dataframe, max_cities=10, keywords=keywords, location=location)
+    jobs_distribution_plot = plots.create_job_distribution_plot(
+        keywords, location)
 
     return {
         'top_skills_plot': top_skills_plot.to_json() if top_skills_plot is not None else None,
         'top_cities_plot': top_cities_plot.to_json() if top_cities_plot is not None else None,
+        'jobs_distribution_plot': jobs_distribution_plot.to_json() if jobs_distribution_plot is not None else None,
     }
 
 

@@ -1,11 +1,15 @@
 import psycopg2
 import os
+import re
 from datetime import datetime
 from urllib import parse
-from fuzzywuzzy import fuzz
+from fuzzywuzzy import fuzz, process
+from googletrans import Translator
+from langdetect import detect
 import pandas as pd
 from tenacity import retry, wait_fixed, stop_after_attempt
 from skills import tech_jobs
+from geoid import country_to_language
 if os.path.exists('env.py'):
     import env
 
@@ -171,20 +175,75 @@ def is_visited_link(job_id):
     return result is not None
 
 
+translator = Translator()
+
+# translate for sql query
+def translate_text(text, target_lang='en'):
+    try:
+        translated = translator.translate(text, dest=target_lang).text
+        return translated
+    except Exception as e:
+        print(f"Translation error: {e}")
+        return text
+
+
+def get_primary_language(country):
+    return country_to_language.get(country.lower(), 'en')
+
+
+def preprocess_title(title):
+    title = title.lower()
+    # Remove special characters and symbols, keep only alphanumeric and spaces
+    title = re.sub(r'[^a-zA-Z0-9\s]', '', title)
+    # Replace multiple spaces with a single space
+    title = re.sub(r'\s+', ' ', title).strip()
+    return title
+
+# translate job titles retrieved from the database for analysis
+def translate_title(title, target_lang='en'):
+    detected_lang = detect(title)
+    if detected_lang != target_lang:
+        translated = translator.translate(
+            title, src=detected_lang, dest=target_lang).text
+        return translated.lower()
+    return title.lower()
+    
+
+def match_title(job_title, tech_jobs):
+    job_title = preprocess_title(job_title)
+    job_title_en = translate_title(job_title)
+
+    match = process.extractOne(
+        job_title_en, tech_jobs, scorer=fuzz.token_set_ratio)
+
+    if match and match[1] >= 60:  
+        return match[0]
+    return job_title
+
+
 @retry(wait=wait_fixed(2), stop=stop_after_attempt(3))
-def get_job_data(keywords=None, location=None):
+def get_job_data(keywords=None, country=None):
+    translated_keywords_en = translate_text(keywords) if keywords else None
+    primary_language = get_primary_language(country) if country else 'en'
+    translated_keywords_local = translate_text(
+        keywords, target_lang=primary_language) if keywords else None
+
     try:
         conn = psycopg2.connect(
             host=DB_HOST, port=DB_PORT, database=DB_NAME, user=DB_USER, password=DB_PASSWORD
         )
         cur = conn.cursor()
 
-        # fuzzy matching to find related job titles
+        # Fuzzy matching for job titles
         matched_keywords = []
         if keywords:
             for title in tech_jobs:
-                score = fuzz.ratio(keywords, title)
-                if score > 70:
+                score_en = fuzz.ratio(
+                    translated_keywords_en, title) if translated_keywords_en else 0
+                score_local = fuzz.ratio(
+                    translated_keywords_local, title) if translated_keywords_local else 0
+
+                if score_en > 60 or score_local > 60:
                     matched_keywords.append(title)
 
         print(f"Matched keywords: {matched_keywords}")
@@ -201,31 +260,33 @@ def get_job_data(keywords=None, location=None):
 
         if matched_keywords:
             title_conditions = ' OR '.join(
-                [f"j.title ILIKE %s" for _ in matched_keywords])
+                ["j.title ILIKE %s" for _ in matched_keywords])
             conditions.append(f"({title_conditions})")
             params.extend(['%' + kw + '%' for kw in matched_keywords])
 
-        if location:
+        if country:
             conditions.append("l.location_name ILIKE %s")
-            params.append('%' + location + '%')
+            params.append('%' + country + '%')
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
-        # Use parameterized queries for safety
         cur.execute(query, params)
-
         job_data = cur.fetchall()
-
         cur.close()
         conn.close()
 
-        # Convert the fetched data to a DataFrame
         columns = ["job_id", "title", "company", "location",
-                "category", "date", "skills", "link"]
+                   "category", "date", "skills", "link"]
         df = pd.DataFrame(job_data, columns=columns)
 
+        # Print original titles
+        print("Original job titles being considered in the search response:")
+        for title in df['title']:
+            print(title)
+
         return df
+
     except psycopg2.OperationalError as e:
         print(f"Error connecting to the database: {e}")
         return None
