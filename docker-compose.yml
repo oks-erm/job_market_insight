@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: gunicorn -b :5000 app:app --workers=3 --threads=3
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+    depends_on:
+      - redis
+
+  celery_worker:
+    build: .
+    command: celery -A app:celery_app worker --loglevel=info --concurrency=8
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - redis
+
+  celery_beat:
+    build: .
+    command: celery -A app:celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - redis
+
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"

@@ -167,3 +167,4 @@ celerybeat.pid
 dump.rdb
 .DS_Store
 ```
+*.pkl
