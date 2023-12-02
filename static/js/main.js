@@ -19,14 +19,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
+
 document.getElementById('contactForm').addEventListener('submit', function (event) {
     event.preventDefault();
 
-    let formData = {
-        name: document.getElementById('name').value,
-        email: document.getElementById('email').value,
-        message: document.getElementById('message').value
-    };
+    let name = document.getElementById('name').value;
+    let email = document.getElementById('email').value;
+    let message = document.getElementById('message').value;
+
+    if (!validateFormData(name, email, message)) {
+        return; 
+    }
+
+    let formData = { name, email, message };
 
     fetch('/process-contact-form', {
         method: 'POST',
@@ -35,21 +40,55 @@ document.getElementById('contactForm').addEventListener('submit', function (even
         },
         body: JSON.stringify(formData),
     })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            displayFeedback(true, 'Thank you for your message!');
-            resetForm();
-        })
-        .catch((error) => {
-            displayFeedback(false, 'There was a problem sending your message.');
-            console.error('Error:', error);
-        });
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Computer says no. Unknown error.');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        displayFeedback(true, data.message);
+        resetForm();
+    })
+    .catch((error) => {
+        displayFeedback(false, error.message);
+        console.error('Error:', error);
+    });
 });
+
+
+function validateFormData(name, email, message) {
+    // Name validation
+    if (!name.trim()) {
+        displayFeedback(false, 'Name is required.');
+        return false;
+    }
+
+    // Email validation
+    if (!email.trim()) {
+        displayFeedback(false, 'Email is required.');
+        return false;
+    } else if (!validateEmail(email)) {
+        displayFeedback(false, 'Please enter a valid email address.');
+        return false;
+    }
+
+    // Message validation
+    if (!message.trim()) {
+        displayFeedback(false, 'Message is required.');
+        return false;
+    }
+
+    return true;
+}
+
+
+function validateEmail(email) {
+    var regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+    return regex.test(email);
+}
 
 
 function displayFeedback(isSuccess, message) {
@@ -57,7 +96,9 @@ function displayFeedback(isSuccess, message) {
     feedbackElement.innerHTML = message;
     feedbackElement.classList.remove('error');
 
-    if (!isSuccess) {
+    if (isSuccess) {
+        feedbackElement.classList.add('success');
+    } else {
         feedbackElement.classList.add('error');
     }
 

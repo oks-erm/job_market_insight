@@ -2,7 +2,10 @@
 <html>
 
 <head>
-    <title>Job Search</title>
+    <title>IT Jobs Market Insights</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Explore IT job market trends in Europe and the UK.">
     <link rel="stylesheet" href="static/css/style.css">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -16,7 +19,9 @@
                 <h1>IT Job Market Insights</h1>
             </div>
             <div>
-                <p class="lead">Explore IT jobs market trends in Europe and the UK</p>
+                <p class="lead">Explore IT jobs market trends in Europe and the UK.</p>
+                <p class="sub-lead">Based on the currently opened positions on major job-boards. Updated every day.</p>
+                <p class="sub-lead">Discover top required skills and top locations with the most jobs available.</p>
             </div>
         </div>
         
@@ -61,7 +66,7 @@
     </div>
     <div id="footer">
         <div class="footer-content">
-            <p>Created by <a href="https://okserm.com">Oksana Erm</a> | 2023</p>
+            <p>Created by <a href="https://okserm.com" target="_blank" rel="noopener noreferrer" title="okserm.com (opens in a new tab)" aria-label="okserm.com (opens in a new tab)">Oksana Erm</a> | 2023</p>
             <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button"
                 data-slug="okserm" data-color="#FFDD00" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee"
                 data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>
@@ -152,12 +157,10 @@
                     socket.emit('search', { keywords: keywords, location: location });
 
                     socket.on('existing_data_plots', handleExistingPlotData);
-
                 });
             });
 
             function handleExistingPlotData(data) {
-                console.log('Existing data plots received.');
                 handlePlotData(data, 'newPlot');
             }
 
@@ -169,11 +172,84 @@
 
             function handlePlotData(data, plotMethod) {
             if (data['top_skills_plot'] && data['top_cities_plot'] && data['jobs_distribution_plot']) {
-                console.log(data);
                 try {
+                    let isMobile = window.innerWidth < 600;
+
                     let topSkillsPlot = JSON.parse(data['top_skills_plot']);
                     let topCitiesPlot = JSON.parse(data['top_cities_plot']);
                     let jobsDistributionPlot = JSON.parse(data['jobs_distribution_plot']);
+
+                    let updateLayoutTopSkills = {
+                        title: 'Top Skills',
+                        yaxis: {
+                            automargin: true,
+                            tickfont: {
+                                size: 11
+                            }
+                        },
+                        xaxis: {
+                            automargin: true
+                        },
+                        legend: {
+                            orientation: 'h',
+                            x: 0,
+                            y: -0.15
+                        },
+                        margin: {
+                            l: 5,
+                            r: 5,
+                            t: 50,
+                            b: 50
+                        }
+                    };
+                    let updateLayoutTopCities = {
+                        title: 'Jobs by City',
+                        yaxis: {
+                            automargin: true,
+                            tickfont: {
+                                size: 11
+                            }
+                        },
+                        xaxis: {
+                            automargin: true
+                        },
+                        legend: {
+                            orientation: 'h',
+                            x: 0,
+                            y: -0.15
+                        },
+                        margin: {
+                            l: 12,
+                            r: 12,
+                            t: 50,
+                            b: 50
+                        }
+                    };
+                    let updateLayoutJobsDistribution = {
+                        title: 'Jobs by Country',
+                        yaxis: {
+                            automargin: true,
+                            tickfont: {
+                                size: 11
+                            },
+                            categoryorder: 'total ascending',
+                        },
+                        xaxis: {
+                            automargin: true
+                        },
+                        legend: {
+                            orientation: 'h',
+                            x: 0,
+                            y: -0.15
+                        },
+                        margin: {
+                            l: 12,
+                            r: 12,
+                            t: 50,
+                            b: 50
+                        }
+                    };
+
 
                     if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
                         hideLoader();
@@ -181,9 +257,16 @@
                         $('#topCitiesPlotContainer').show();
                         $('#jobsDistributionPlotContainer').show();
 
+
                         Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
                         Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
                         Plotly.newPlot('jobsDistributionPlot', jobsDistributionPlot.data, jobsDistributionPlot.layout);
+                        
+                        if (isMobile) {
+                            Plotly.relayout('topSkillsPlot', updateLayoutTopSkills);
+                            Plotly.relayout('topCitiesPlot', updateLayoutTopCities);
+                            Plotly.relayout('jobsDistributionPlot', updateLayoutJobsDistribution);
+                        }
                     } else {
                         console.log('Invalid plot data received.');
                         showNoDataMessage();

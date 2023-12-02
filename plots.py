@@ -25,8 +25,7 @@ def create_top_skills_plot(df, keywords=None, location=None, fig=None):
         color='frequency',
         labels={'frequency': 'Frequency', 'skill': 'Skills'},
         title=f'Top {max_skills} skills for {keywords} jobs in {location}',
-        height=600,  
-        width=800,  
+        height=600
     )
 
     # Appearance of the bars
@@ -38,6 +37,7 @@ def create_top_skills_plot(df, keywords=None, location=None, fig=None):
 
     # Adjust the layout
     new_fig.update_layout(
+        autosize=True,
         yaxis=dict(categoryorder='total ascending', showticklabels=True),
         margin=dict(l=50, r=10, t=50, b=10),  # Reduce the margins
         title_x=0.5,  # Center the title along the x-axis
@@ -88,8 +88,6 @@ def create_top_cities_plot(df, max_cities, keywords=None, location=None, fig=Non
         color='job_count',
         color_continuous_scale='Viridis', 
         opacity=0.7,
-        height=370,
-        width=800
     )
 
     # Appearance of the bars
@@ -101,6 +99,7 @@ def create_top_cities_plot(df, max_cities, keywords=None, location=None, fig=Non
 
     # Set the layout for the chart
     fig.update_layout(
+        autosize = True,
         margin=dict(l=50, r=50, t=50, b=20),  
         xaxis_title='Number of Jobs',
         yaxis_title='City',
@@ -170,8 +169,6 @@ def create_job_distribution_plot(search_term, excluded_country):
         orientation='h',
         title=f'Job Distribution for "{search_term}" Outside {excluded_country}',
         labels={'job_count': 'Number of Jobs', 'country': 'Country'},
-        height=600,
-        width=800
     )
 
     fig.update_traces(
@@ -180,6 +177,7 @@ def create_job_distribution_plot(search_term, excluded_country):
     )
 
     fig.update_layout(
+        autosize=True,
         yaxis=dict(categoryorder='total ascending', showticklabels=True),
         margin=dict(l=50, r=10, t=50, b=10), 
         title_x=0.5, 
