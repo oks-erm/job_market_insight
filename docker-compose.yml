@@ -10,6 +10,8 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=production
+    env_file:
+      - .env
     depends_on:
       - redis
 
@@ -18,18 +20,29 @@ services:
     command: celery -A app:celery_app worker --loglevel=info --concurrency=8
     volumes:
       - .:/usr/src/app
+    env_file:
+      - .env
     depends_on:
       - redis
 
   celery_beat:
     build: .
-    command: celery -A app:celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    command: celery -A app:celery_app beat --loglevel=info --schedule=/usr/src/app/tmp/celerybeat-schedule
     volumes:
       - .:/usr/src/app
+      - celerybeat-schedule:/usr/src/app/tmp
+    env_file:
+      - .env
     depends_on:
       - redis
 
   redis:
     image: "redis:alpine"
+    volumes:
+      - redis-data:/data
     ports:
       - "6379:6379"
+
+volumes:
+  redis-data:
+  celerybeat-schedule:
