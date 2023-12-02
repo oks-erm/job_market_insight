@@ -6,6 +6,7 @@ from urllib import parse
 from fuzzywuzzy import fuzz, process
 from googletrans import Translator
 from langdetect import detect
+from geotext import GeoText
 import pandas as pd
 from tenacity import retry, wait_fixed, stop_after_attempt
 from skills import tech_jobs
@@ -243,10 +244,12 @@ def get_job_data(keywords=None, country=None):
                 score_local = fuzz.ratio(
                     translated_keywords_local, title) if translated_keywords_local else 0
 
-                if score_en > 60 or score_local > 60:
+                if score_en > 67 or score_local > 67:
                     matched_keywords.append(title)
 
-        print(f"Matched keywords: {matched_keywords}")
+        # Filter matched titles based on exclusion rules
+        filtered_keywords = filter_matched_titles(keywords, matched_keywords)
+        print(f"Matched keywords: {filtered_keywords}")
 
         query = '''
             SELECT j.job_id, j.title, j.company, l.location_name as location, c.category_name as category, j.date, j.skills, j.link
@@ -258,11 +261,11 @@ def get_job_data(keywords=None, country=None):
         conditions = []
         params = []
 
-        if matched_keywords:
+        if filtered_keywords:
             title_conditions = ' OR '.join(
-                ["j.title ILIKE %s" for _ in matched_keywords])
+                ["j.title ILIKE %s" for _ in filtered_keywords])
             conditions.append(f"({title_conditions})")
-            params.extend(['%' + kw + '%' for kw in matched_keywords])
+            params.extend(['%' + kw + '%' for kw in filtered_keywords])
 
         if country:
             conditions.append("l.location_name ILIKE %s")
@@ -280,13 +283,57 @@ def get_job_data(keywords=None, country=None):
                    "category", "date", "skills", "link"]
         df = pd.DataFrame(job_data, columns=columns)
 
-        # Print original titles
-        print("Original job titles being considered in the search response:")
-        for title in df['title']:
-            print(title)
+        processed_data = process_data(df)
 
-        return df
+        return processed_data
 
     except psycopg2.OperationalError as e:
         print(f"Error connecting to the database: {e}")
         return None
+
+
+def process_data(df):
+    # Fill missing values with "N/A"
+    df_filled = df.fillna(value="N/A")
+
+    # Convert 'date' column to datetime
+    df_filled['date'] = pd.to_datetime(df['date'])
+
+    # Function to extract city and country names from 'location'
+    def extract_place_names(location_str):
+        places = GeoText(location_str)
+        city = places.cities[0] if places.cities else ''
+        country = places.countries[0] if places.countries else ''
+        return city, country
+
+    df_filled[['city', 'country']] = df_filled['location'].apply(
+        lambda x: pd.Series(extract_place_names(x)))
+
+    # Split the 'location' column into 'city' and 'country' columns
+    df_filled.drop(columns=['location'], inplace=True)
+
+   # Sort the DataFrame by the 'date' column in descending order
+    df_sorted = df_filled.sort_values('date', ascending=False)
+
+    return df_sorted
+
+
+def filter_matched_titles(search_term, matched_titles):
+    exclusion_rules = {
+        "Front End Developer": ["Back End Developer"],
+        "Back End Developer": ["Front End Developer"],
+        "Software Developer": ["Software Engineer"],
+        "Software Engineer": ["Software Developer"],
+        "Data Scientist": ["Data Analyst"],
+        "Data Analyst": ["Data Scientist"],
+        "UI/UX Designer": ["Graphic Designer"],
+        "Cybersecurity Analyst": ["Network Security Engineer"],
+        "Network Security Engineer": ["Cybersecurity Analyst"],
+        "AI Engineer": ["Machine Learning Engineer"],
+        "Machine Learning Engineer": ["AI Engineer"],
+        "Game Designer": ["Game Developer"],
+        "Game Developer": ["Game Designer"]
+    }
+
+    excluded_titles = exclusion_rules.get(search_term, [])
+    return [title for title in matched_titles if title not in excluded_titles]

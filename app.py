@@ -78,7 +78,6 @@ def handle_search_event(data):
     keywords = data.get('keywords')
     location = data.get('location')
     response = process_search_request(keywords, location)
-    print(response)
     emit('existing_data_plots', response)
 
 
@@ -95,11 +94,11 @@ def process_search_request(keywords, location):
         }
 
     print("Data for the request is found.")
-    search_dataframe = plots.create_search_dataframe(keywords, location)
+
     top_skills_plot = plots.create_top_skills_plot(
-        search_dataframe, keywords, location)
+        job_data, keywords, location)
     top_cities_plot = plots.create_top_cities_plot(
-        search_dataframe, max_cities=10, keywords=keywords, location=location)
+        job_data, max_cities=10, keywords=keywords, location=location)
     jobs_distribution_plot = plots.create_job_distribution_plot(
         keywords, location)
 

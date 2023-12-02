@@ -3,71 +3,12 @@ import plotly.graph_objects as go
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
-from geotext import GeoText
 import psycopg2
 from urllib import parse
 import os
 from db import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 if os.path.exists('env.py'):
     import env  # noqa # pylint: disable=unused-import
-
-
-def create_search_dataframe(keywords, location):
-    # Connect to the database
-    DATABASE_URL = os.environ['DATABASE_URL']
-    parse.uses_netloc.append('postgres')
-    url = parse.urlparse(DATABASE_URL)
-    DB_HOST = url.hostname
-    DB_PORT = url.port
-    DB_NAME = url.path[1:]
-    DB_USER = url.username
-    DB_PASSWORD = url.password
-
-    conn = psycopg2.connect(host=DB_HOST, port=DB_PORT,
-                            database=DB_NAME, user=DB_USER, password=DB_PASSWORD)
-
-    cur = conn.cursor()
-
-    query = f'''
-        SELECT j.job_id, j.title, j.company, l.location_name as location, c.category_name as category, j.date, j.skills, j.link
-        FROM jobs j
-        JOIN locations l ON j.location_id = l.id
-        JOIN job_categories c ON j.category_id = c.id
-        WHERE (j.title ILIKE '%{keywords}%' AND l.location_name ILIKE '%{location}%')
-    '''
-    cur.execute(query)
-    job_data = cur.fetchall()
-
-    cur.close()
-    conn.close()
-
-    # Create pandas DataFrame
-    df = pd.DataFrame(job_data, columns=[
-                      "job_id", "title", "company", "location", "category", "date", "skills", "link"])
-
-    # Fill missing values with "N/A"
-    df_filled = df.fillna(value="N/A")
-
-    # Convert 'date' column to datetime
-    df_filled['date'] = pd.to_datetime(df['date'])
-   
-    # Function to extract city and country names from 'location'
-    def extract_place_names(location_str):
-        places = GeoText(location_str)
-        city = places.cities[0] if places.cities else ''
-        country = places.countries[0] if places.countries else ''
-        return city, country
-
-    df_filled[['city', 'country']] = df_filled['location'].apply(
-        lambda x: pd.Series(extract_place_names(x)))
-
-    # Split the 'location' column into 'city' and 'country' columns
-    df_filled.drop(columns=['location'], inplace=True)
-
-   # Sort the DataFrame by the 'date' column in descending order
-    df_sorted = df_filled.sort_values('date', ascending=False)
-
-    return df_sorted
 
 
 def create_top_skills_plot(df, keywords=None, location=None, fig=None):
@@ -212,7 +153,6 @@ def create_job_distribution_plot(search_term, excluded_country):
     df = df[df['country'] != excluded_country]
 
     df = df[df['title'].str.contains(search_term, case=False, na=False)]
-    print(df.head())
 
     # Group and count jobs by country
     country_counts = df['country'].value_counts().reset_index()

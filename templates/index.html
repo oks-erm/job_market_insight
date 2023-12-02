@@ -24,8 +24,10 @@
             <form id="searchForm">
                 <label for="keywordsInput">Job Title:</label>
                 <input type="text" id="keywordsInput" placeholder="Job Title" name="jobs" required>
+                <div id="keywordsInputError" class="error-message"></div>
                 <label for="locationInput">Location:</label>
                 <input type="text" id="locationInput" placeholder="Location" name="location" required>
+                <div id="locationInputError" class="error-message"></div>
                 <br>
                 <button type="submit">Explore</button>
             </form>
@@ -58,118 +60,163 @@
         </div>
     </div>
     <div id="footer">
-        <p>Created by <a href="https://okserm.com">Oksana Erm</a> | 2023</p>
-        <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button"
-            data-slug="okserm" data-color="#FFDD00" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee"
-            data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>
+        <div class="footer-content">
+            <p>Created by <a href="https://okserm.com">Oksana Erm</a> | 2023</p>
+            <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button"
+                data-slug="okserm" data-color="#FFDD00" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee"
+                data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>
+            <!-- Contact Form -->
+            <div class="contact-form">
+                <button id="contactBtn" class="contact-btn">Contact Me</button>
+                <div id="contactFormContainer" class="contact-form-container" style="display: none;">
+                    <form id="contactForm">
+                        <input type="text" id="name" name="name" placeholder="Your Name" required>
+                        <input type="email" id="email" name="email" placeholder="Your Email" required>
+                        <textarea id="message" name="message" placeholder="Your Message" required></textarea>
+                        <button type="submit" class="send-btn">Send</button>
+                    </form>
+                    <div id="formFeedback" class="form-feedback"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="../static/js/main.js"></script>
     <script>
-        function populateAutocompleteInputs() {
+        $(document).ready(function () {
+            let availableJobs = [];
+            let availableLocations = [];
+
+            function populateAutocompleteInputs() {
                 $.get("/get-available-data", function (data) {
-                    let jobs = data.available_jobs;
-                    let locations = data.available_locations;
+                    availableJobs = data.available_jobs;
+                    availableLocations = data.available_locations;
 
                     $('#keywordsInput').autocomplete({
-                        source: jobs
+                        source: availableJobs
                     });
                     $('#locationInput').autocomplete({
-                        source: locations
+                        source: availableLocations
                     });
                 });
             }
 
-        $(document).ready(function () {
-                populateAutocompleteInputs();
-                let socket = io();
+            function isValidInput(input, validOptions) {
+                return validOptions.includes(input);
+            }
 
-                socket.on('connect', function () {
-                    socket.emit('my event', { data: 'I\'m connected!' });
+            function showError(inputId, message) {
+                $(inputId).addClass('error');
+                $(inputId + 'Error').text(message).show();
+                hideLoader();
+            }
 
-                    $('#searchForm').submit(function (event) {
-                        event.preventDefault();
-                        showLoader();
+            function hideError(inputId) {
+                $(inputId).removeClass('error');
+                $(inputId + 'Error').hide();
+            }
 
-                        // Clear the plots
-                        $('#topSkillsPlotContainer').hide();
-                        $('#topCitiesPlotContainer').hide();
-                        $('#jobsDistributionPlotContainer').hide();
+            populateAutocompleteInputs();
+            let socket = io();
 
-                        let keywords = $('#keywordsInput').val();
-                        let location = $('#locationInput').val();
+            socket.on('connect', function () {
+                socket.emit('my event', { data: 'I\'m connected!' });
 
-                        socket.emit('search', { keywords: keywords, location: location });
+                $('#searchForm').submit(function (event) {
+                    event.preventDefault();
+                    hideError('#keywordsInput');
+                    hideError('#locationInput');
+                    showLoader();
 
-                        socket.on('existing_data_plots', handleExistingPlotData);
+                    // Clear the plots
+                    $('#topSkillsPlotContainer').hide();
+                    $('#topCitiesPlotContainer').hide();
+                    $('#jobsDistributionPlotContainer').hide();
 
-                    });
+                    let keywords = $('#keywordsInput').val();
+                    let location = $('#locationInput').val();
+
+                    // Validate inputs against available options
+                    if (!isValidInput(keywords, availableJobs)) {
+                        showError('#keywordsInput', 'Please select a valid job title from the list');
+                        return;
+                    }
+                    if (!isValidInput(location, availableLocations)) {
+                        showError('#locationInput', 'Please select a valid location from the list');
+                        return;
+                    }
+
+                    socket.emit('search', { keywords: keywords, location: location });
+
+                    socket.on('existing_data_plots', handleExistingPlotData);
+
                 });
+            });
 
-                function handleExistingPlotData(data) {
-                    console.log('Existing data plots received.');
-                    handlePlotData(data, 'newPlot');
-                }
+            function handleExistingPlotData(data) {
+                console.log('Existing data plots received.');
+                handlePlotData(data, 'newPlot');
+            }
 
-                function handleUpdatedPlotData(data) {
-                    console.log('Plot update received.');
-                    handleProgressUpdate(data.state);
-                    handlePlotData(data, 'react'); 
-                }
+            function handleUpdatedPlotData(data) {
+                console.log('Plot update received.');
+                handleProgressUpdate(data.state);
+                handlePlotData(data, 'react'); 
+            }
 
-                function handlePlotData(data, plotMethod) {
-                if (data['top_skills_plot'] && data['top_cities_plot'] && data['jobs_distribution_plot']) {
-                    console.log(data);
-                    try {
-                        let topSkillsPlot = JSON.parse(data['top_skills_plot']);
-                        let topCitiesPlot = JSON.parse(data['top_cities_plot']);
-                        let jobsDistributionPlot = JSON.parse(data['jobs_distribution_plot']);
+            function handlePlotData(data, plotMethod) {
+            if (data['top_skills_plot'] && data['top_cities_plot'] && data['jobs_distribution_plot']) {
+                console.log(data);
+                try {
+                    let topSkillsPlot = JSON.parse(data['top_skills_plot']);
+                    let topCitiesPlot = JSON.parse(data['top_cities_plot']);
+                    let jobsDistributionPlot = JSON.parse(data['jobs_distribution_plot']);
 
-                        if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
-                            hideLoader();
-                            $('#topSkillsPlotContainer').show();
-                            $('#topCitiesPlotContainer').show();
-                            $('#jobsDistributionPlotContainer').show();
+                    if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
+                        hideLoader();
+                        $('#topSkillsPlotContainer').show();
+                        $('#topCitiesPlotContainer').show();
+                        $('#jobsDistributionPlotContainer').show();
 
-                            Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
-                            Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
-                            Plotly.newPlot('jobsDistributionPlot', jobsDistributionPlot.data, jobsDistributionPlot.layout);
-                        } else {
-                            console.log('Invalid plot data received.');
-                            showNoDataMessage();
-                        }
-                    } catch (error) {
-                        console.error('Error parsing JSON data:', error);
+                        Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
+                        Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
+                        Plotly.newPlot('jobsDistributionPlot', jobsDistributionPlot.data, jobsDistributionPlot.layout);
+                    } else {
+                        console.log('Invalid plot data received.');
                         showNoDataMessage();
                     }
-                } else {
-                    console.log('No data received.');
+                } catch (error) {
+                    console.error('Error parsing JSON data:', error);
                     showNoDataMessage();
                 }
+            } else {
+                console.log('No data received.');
+                showNoDataMessage();
+            }}
+
+            function validatePlotData(plotData) {
+                return typeof plotData === 'object' && plotData !== null &&
+                    plotData.hasOwnProperty('data') && plotData.hasOwnProperty('layout') &&
+                    Array.isArray(plotData.data) && plotData.data.length > 0;
             }
 
-                function validatePlotData(plotData) {
-                    return typeof plotData === 'object' && plotData !== null &&
-                        plotData.hasOwnProperty('data') && plotData.hasOwnProperty('layout') &&
-                        Array.isArray(plotData.data) && plotData.data.length > 0;
-                }
+            function showLoader() {
+                $('#loader').show();
+                $('#noDataMessage').hide();
+            }
 
-                function showLoader() {
-                    $('#loader').show();
-                    $('#noDataMessage').hide();
-                }
+            function hideLoader() {
+                $('#loader').hide();
+            }
 
-                function hideLoader() {
-                    $('#loader').hide();
-                }
-
-                function showNoDataMessage() {
-                    $('#noDataMessage').show();
-                    hideLoader();
-                }
-            });
+            function showNoDataMessage() {
+                $('#noDataMessage').show();
+                hideLoader();
+            }
+        });
 
     </script>
 </body>

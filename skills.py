@@ -38,7 +38,7 @@ tech_skills = [
     'Digital Marketing', 'SEO', 'Social Media Marketing', 'Content Management Systems', 'WordPress Development',
     'Artificial Intelligence', 'Robotics Process Automation (RPA)', 'Robotic Process Automation (RPA)', 'Cloud-Native Development',
     'Serverless Computing', 'Internet of Things (IoT)', 'Edge Computing', 'Natural Language Generation (NLG)', 'Quantum Computing',
-    'Blockchain Technology', 'Smart Contracts', 'Decentralized Finance (DeFi)', 'Cybersecurity', 'Ethical Hacking', 'Threat Intelligence',
+    'Smart Contracts', 'Decentralized Finance (DeFi)', 'Cybersecurity', 'Ethical Hacking', 'Threat Intelligence',
     'Cloud Security', 'Identity and Access Management (IAM)', 'SecDevOps', 'Containerization', 'Microservices Architecture',
     'Event-Driven Architecture (EDA)', 'Data Engineering', 'Data Governance', 'Data Privacy', 'Data Visualization',
     'Machine Learning Operations (MLOps)', 'Big Data Analytics', 'Streaming Data Processing', 'Graph Databases',
@@ -52,7 +52,7 @@ tech_skills = [
     'ERP Systems', 'ERP Implementation', 'Business Intelligence (BI)', 'Data Warehousing', 'Data Integration',
     'Data Collection', 'Predictive Models', 'Data Mining', 'Data Visualization', 'Data Storytelling', 
     'Data Governance', 'Data Privacy', 'Data Security', 'Data Quality', 'Data Catalog', 'Data Pipelines',
-    'Data Ops', 'ML Ops'
+    'Data Ops', 'ML Ops', 'Rust'
 ]
 
 tech_jobs = [
