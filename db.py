@@ -5,7 +5,6 @@ from datetime import datetime
 from urllib import parse
 from fuzzywuzzy import fuzz, process
 from deep_translator import GoogleTranslator
-from langdetect import detect
 from geotext import GeoText
 import pandas as pd
 from tenacity import retry, wait_fixed, stop_after_attempt
