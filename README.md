@@ -6,6 +6,11 @@
 
  **IT Jobs Insights** is a Flask-based web application designed to provide real-time insights into the trends of IT job market. Built on websocket and Celery for distributed task processing. The application is configured to scrape job data from major job boards and present analytical visualizations to the user. Only open positions are scraped and the data is consistently updated every 24 hours to ensure that the user is presented with the most recent job market trends.
 
+____
+![IT Jobs Insights](/static/images/work008.png)
+
+____
+
 ## Features:
 
 - Real-Time Data Processing: Flask-SocketIO for handling real-time search requests and emitting job market data to clients.
@@ -39,5 +44,6 @@ _____
 
 ____________________
 
-### Let me know if you managed to brake it!
+
+**Let me know if you managed to brake it!**
 
