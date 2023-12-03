@@ -1,28 +1,41 @@
-from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit
-from flask_cors import CORS
-from celery import Celery
 import requests
 import secrets
 import traceback
-from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
 import plots
+import re
+import os
+from flask_mail import Mail, Message
+from flask import Flask, render_template, request, jsonify
+from flask_socketio import SocketIO, emit
+from flask_cors import CORS
+from celery import Celery
+from markupsafe import escape
 from scraper import linkedin_scraper
 from db import get_job_data, create_table
 from geoid import country_dict
-from skills import positions
+from skills import tech_jobs
+from celery.exceptions import MaxRetriesExceededError
 from schedule import create_beat_schedule, generate_link
+if os.path.exists('env.py'):
+    import env  # noqa # pylint: disable=unused-import
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(32)
 app.config['DEBUG'] = True
+app.config['MAIL_SERVER'] = os.environ.get('EMAIL_HOST')
+app.config['MAIL_PORT'] = os.environ.get('EMAIL_PORT')
+app.config['MAIL_USERNAME'] = os.environ.get('EMAIL_HOST_USER')
+app.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_HOST_PASSWORD')
+
+# websocket
 socketio = SocketIO(app, 
                     message_queue='redis://localhost:6379/0', 
                     async_mode='threading', 
                     engineio_logger=True, 
                     websocket_transports=['websocket', 'xhr-polling'])
 
+# celery
 celery_app = Celery('celery_app', 
                     broker='redis://localhost:6379/0',
                     backend='redis://localhost:6379/0',
@@ -31,37 +44,12 @@ celery_app = Celery('celery_app',
                     accept_content=['json'],
                     result_serializer='json'
                     )
-celery_app.conf.beat_schedule = create_beat_schedule(positions, country_dict)
+celery_app.conf.beat_schedule = create_beat_schedule(tech_jobs, country_dict)
 celery_app.conf.timezone = 'UTC'
 
 CORS(app)
+mail = Mail(app)
 create_table()
-
-
-class Progress:
-    def __init__(self):
-        self.state = "not_started"
-
-    def set_state(self, state):
-        self.state = state
-
-    def get_state(self):
-        return self.state
-
-
-class ScrapeProgress:
-    def __init__(self):
-        self.namespaces = {}
-
-    def register_namespace(self, namespace):
-        if namespace not in self.namespaces:
-            self.namespaces[namespace] = Progress()
-
-    def get_state(self, namespace):
-        return self.namespaces.get(namespace, None)
-
-
-scrape_progress = ScrapeProgress()
 
 
 @app.route('/')
@@ -69,121 +57,106 @@ def index():
     return render_template('index.html')
 
 
-@celery_app.task(name='app.scrape_linkedin_data')
-@retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(1))
-def scrape_linkedin_data(url, keywords, location, namespace='batch'):
-    print(f"Scraping FROM CELERY APP")
-    # Register the namespace for progress tracking
-    scrape_progress.register_namespace(namespace)
+@app.route('/get-available-data')
+def get_available_data():
+    return {
+        "available_jobs": tech_jobs,
+        "available_locations": [item.title() for item in list(country_dict.keys())]
+    }
+
+
+@app.route('/process-contact-form', methods=['POST'])
+def process_contact_form():
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    message = data.get('message', '').strip()
+
+    # Validate data
+    if not name or not email or not message:
+        return jsonify({'error': 'All fields are required.'}), 400
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+        return jsonify({'error': 'Invalid email address.'}), 400
+    if not message or len(message) > 500:
+        return jsonify({'error': 'Invalid message.'}), 400
+    
+    # Send email
+    send_email(
+        subject='ITJM insight app Contact Form',
+        sender=app.config.get('MAIL_USERNAME'),
+        recipients=[app.config.get('MAIL_USERNAME')],
+        text_body=f"Name: {sanitize_input(name)}\nEmail: {sanitize_input(email)}\nMessage: {sanitize_input(message)}"
+    )
+
+    return jsonify({'message': 'Your message has been sent successfully!'})
+
+
+def sanitize_input(input_string):
+    return escape(input_string)
+
+
+def send_email(subject, sender, recipients, text_body):
+    msg = Message(subject, sender=sender, recipients=recipients)
+    msg.body = text_body
+    mail.send(msg)
+
+
+@celery_app.task(bind=True, name='app.scrape_linkedin_data', max_retries=3)
+def scrape_linkedin_data(self, position, country_name, *args, **kwargs):
+    print(f"Scraping FROM CELERY APP for {position} in {country_name}")
+    url = generate_link(position, country_name)
 
     try:
-        if namespace != 'batch':
-            scrape_progress.namespaces[namespace].set_state("in_progress")
-            socketio.emit('progress_update', {'message': 'Scraping started...', 'state': scrape_progress.get_state(
-                namespace).get_state(), 'namespace': namespace})
-
-        # Perform the actual scraping
-        linkedin_scraper(url, 0, namespace)
-        print("AFTER LINKEDIN SCRAPER")
-
-        # Scraping is complete, update the job data after scraping
-        job_data = get_job_data(keywords, location)
-
-        if not job_data.empty:
-            # If there is existing data (after scraping)
-            new_search_dataframe = plots.create_search_dataframe(
-                keywords, location)
-            new_top_skills_plot = plots.create_top_skills_plot(
-                new_search_dataframe, keywords, location)
-            new_top_cities_plot = plots.create_top_cities_plot(
-                new_search_dataframe, max_cities=10, keywords=keywords, location=location)
-
-            data = {
-                'new_top_skills_json': new_top_skills_plot.to_json(),
-                'new_top_cities_json': new_top_cities_plot.to_json(),
-                namespace: namespace
-            }
-
-            if namespace != 'batch':
-                scrape_progress.namespaces[namespace].set_state("done")
-                socketio.emit('progress_update', {'message': 'All tasks complete.', 'state': scrape_progress.get_state(
-                    namespace).get_state(), 'namespace': namespace})
-                socketio.emit('update_plot', data)
-        else:
-            results = {
-                'message': 'No data found.',
-                'namespace': namespace
-            }
-            if namespace != 'batch':
-                socketio.emit('no_data', results)
-
+        linkedin_scraper(url)
     except requests.exceptions.HTTPError as e:
         print(f"Error occurred while scraping job description: {str(e)}")
         print(traceback.format_exc())
         raise e
-    except RetryError as e:
-        print("RetryError occurred. The task will not be retried further.")
-        print(traceback.format_exc())
     except Exception as e:
         print(
             f"Unexpected error occurred while scraping job description: {str(e)}")
         print(traceback.format_exc())
+        try:
+            self.retry(exc=e, countdown=30)
+        except MaxRetriesExceededError:
+            print("Max retries exceeded for scraping task.")
 
 
 @socketio.on('search')
 def handle_search_event(data):
     keywords = data.get('keywords')
     location = data.get('location')
-    namespace = request.sid
-    response = process_search_request(keywords, location, namespace)
-    # Check if the plots in the response are not None or empty
-    if response.get('top_skills_plot') and response.get('top_cities_plot'):
-        emit('existing_data_plots', response)
+    response = process_search_request(keywords, location)
+    emit('existing_data_plots', response)
 
 
-def process_search_request(keywords, location, namespace):
-    # socketio.emit('show_progress_bar', namespace=namespace)
-
+def process_search_request(keywords, location):
     # Get existing job data from the database
     job_data = get_job_data(keywords, location)
 
-    # Check if there is existing data to create Plotly figures
-    if not job_data.empty:
-        print("Existing data found.")
-
-        search_dataframe = plots.create_search_dataframe(keywords, location)
-        top_skills_plot = plots.create_top_skills_plot(
-            search_dataframe, keywords, location)
-        top_cities_plot = plots.create_top_cities_plot(
-            search_dataframe, max_cities=10, keywords=keywords, location=location)
-
-    else:
+    if job_data.empty:
         print("No existing data found.")
-        top_skills_plot = None
-        top_cities_plot = None
+        return {
+            'top_skills_plot': None,
+            'top_cities_plot': None,
+            'jobs_distribution_plot': None,
+        }
 
-    if keywords and location:
-        url = generate_link(keywords, location)
-        scrape_linkedin_data.apply_async(
-            args=[url, keywords, location, namespace],
-            task_id=f'{keywords}_{location}'
-        )
-    #existing data
+    print("Data for the request is found.")
+
+    top_skills_plot = plots.create_top_skills_plot(
+        job_data, keywords, location)
+    top_cities_plot = plots.create_top_cities_plot(
+        job_data, max_cities=10, keywords=keywords, location=location)
+    jobs_distribution_plot = plots.create_job_distribution_plot(
+        keywords, location)
+
     return {
         'top_skills_plot': top_skills_plot.to_json() if top_skills_plot is not None else None,
         'top_cities_plot': top_cities_plot.to_json() if top_cities_plot is not None else None,
+        'jobs_distribution_plot': jobs_distribution_plot.to_json() if jobs_distribution_plot is not None else None,
     }
 
-
-@socketio.on('show_progress_bar')
-def show_progress_bar():
-    emit('show_progress_bar')
-
-
-@socketio.on_error()  
-def handle_socketio_error(e):
-    print(f"WebSocket error occurred: {e}")
-    print(traceback.format_exc())
 
 celery_app.autodiscover_tasks(['app'])
 

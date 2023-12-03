@@ -1,9 +1,16 @@
 import psycopg2
 import os
+import re
 from datetime import datetime
 from urllib import parse
+from fuzzywuzzy import fuzz, process
+from googletrans import Translator
+from langdetect import detect
+from geotext import GeoText
 import pandas as pd
 from tenacity import retry, wait_fixed, stop_after_attempt
+from skills import tech_jobs
+from geoid import country_to_language
 if os.path.exists('env.py'):
     import env
 
@@ -169,15 +176,81 @@ def is_visited_link(job_id):
     return result is not None
 
 
+translator = Translator()
+
+# translate for sql query
+def translate_text(text, target_lang='en'):
+    try:
+        translated = translator.translate(text, dest=target_lang).text
+        return translated
+    except Exception as e:
+        print(f"Translation error: {e}")
+        return text
+
+
+def get_primary_language(country):
+    return country_to_language.get(country.lower(), 'en')
+
+
+def preprocess_title(title):
+    title = title.lower()
+    # Remove special characters and symbols, keep only alphanumeric and spaces
+    title = re.sub(r'[^a-zA-Z0-9\s]', '', title)
+    # Replace multiple spaces with a single space
+    title = re.sub(r'\s+', ' ', title).strip()
+    return title
+
+# translate job titles retrieved from the database for analysis
+def translate_title(title, target_lang='en'):
+    detected_lang = detect(title)
+    if detected_lang != target_lang:
+        translated = translator.translate(
+            title, src=detected_lang, dest=target_lang).text
+        return translated.lower()
+    return title.lower()
+    
+
+def match_title(job_title, tech_jobs):
+    job_title = preprocess_title(job_title)
+    job_title_en = translate_title(job_title)
+
+    match = process.extractOne(
+        job_title_en, tech_jobs, scorer=fuzz.token_set_ratio)
+
+    if match and match[1] >= 60:  
+        return match[0]
+    return job_title
+
+
 @retry(wait=wait_fixed(2), stop=stop_after_attempt(3))
-def get_job_data(keywords=None, location=None):
+def get_job_data(keywords=None, country=None):
+    translated_keywords_en = translate_text(keywords) if keywords else None
+    primary_language = get_primary_language(country) if country else 'en'
+    translated_keywords_local = translate_text(
+        keywords, target_lang=primary_language) if keywords else None
+
     try:
         conn = psycopg2.connect(
             host=DB_HOST, port=DB_PORT, database=DB_NAME, user=DB_USER, password=DB_PASSWORD
         )
         cur = conn.cursor()
 
-        # Prepare the SQL query
+        # Fuzzy matching for job titles
+        matched_keywords = []
+        if keywords:
+            for title in tech_jobs:
+                score_en = fuzz.ratio(
+                    translated_keywords_en, title) if translated_keywords_en else 0
+                score_local = fuzz.ratio(
+                    translated_keywords_local, title) if translated_keywords_local else 0
+
+                if score_en > 67 or score_local > 67:
+                    matched_keywords.append(title)
+
+        # Filter matched titles based on exclusion rules
+        filtered_keywords = filter_matched_titles(keywords, matched_keywords)
+        print(f"Matched keywords: {filtered_keywords}")
+
         query = '''
             SELECT j.job_id, j.title, j.company, l.location_name as location, c.category_name as category, j.date, j.skills, j.link
             FROM jobs j
@@ -185,27 +258,82 @@ def get_job_data(keywords=None, location=None):
             JOIN job_categories c ON j.category_id = c.id
         '''
 
-        # Check if keywords and/or location are provided to add filtering conditions to the query
-        if keywords and location:
-            query += f"WHERE j.title ILIKE '%{keywords}%' AND l.location_name ILIKE '%{location}%'"
-        elif keywords:
-            query += f"WHERE j.title ILIKE '%{keywords}%'"
-        elif location:
-            query += f"WHERE l.location_name ILIKE '%{location}%'"
+        conditions = []
+        params = []
 
-        cur.execute(query)
+        if filtered_keywords:
+            title_conditions = ' OR '.join(
+                ["j.title ILIKE %s" for _ in filtered_keywords])
+            conditions.append(f"({title_conditions})")
+            params.extend(['%' + kw + '%' for kw in filtered_keywords])
 
+        if country:
+            conditions.append("l.location_name ILIKE %s")
+            params.append('%' + country + '%')
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+
+        cur.execute(query, params)
         job_data = cur.fetchall()
-
         cur.close()
         conn.close()
 
-        # Convert the fetched data to a DataFrame
         columns = ["job_id", "title", "company", "location",
-                "category", "date", "skills", "link"]
+                   "category", "date", "skills", "link"]
         df = pd.DataFrame(job_data, columns=columns)
 
-        return df
+        processed_data = process_data(df)
+
+        return processed_data
+
     except psycopg2.OperationalError as e:
         print(f"Error connecting to the database: {e}")
         return None
+
+
+def process_data(df):
+    # Fill missing values with "N/A"
+    df_filled = df.fillna(value="N/A")
+
+    # Convert 'date' column to datetime
+    df_filled['date'] = pd.to_datetime(df['date'])
+
+    # Function to extract city and country names from 'location'
+    def extract_place_names(location_str):
+        places = GeoText(location_str)
+        city = places.cities[0] if places.cities else ''
+        country = places.countries[0] if places.countries else ''
+        return city, country
+
+    df_filled[['city', 'country']] = df_filled['location'].apply(
+        lambda x: pd.Series(extract_place_names(x)))
+
+    # Split the 'location' column into 'city' and 'country' columns
+    df_filled.drop(columns=['location'], inplace=True)
+
+   # Sort the DataFrame by the 'date' column in descending order
+    df_sorted = df_filled.sort_values('date', ascending=False)
+
+    return df_sorted
+
+
+def filter_matched_titles(search_term, matched_titles):
+    exclusion_rules = {
+        "Front End Developer": ["Back End Developer"],
+        "Back End Developer": ["Front End Developer"],
+        "Software Developer": ["Software Engineer"],
+        "Software Engineer": ["Software Developer"],
+        "Data Scientist": ["Data Analyst"],
+        "Data Analyst": ["Data Scientist"],
+        "UI/UX Designer": ["Graphic Designer"],
+        "Cybersecurity Analyst": ["Network Security Engineer"],
+        "Network Security Engineer": ["Cybersecurity Analyst"],
+        "AI Engineer": ["Machine Learning Engineer"],
+        "Machine Learning Engineer": ["AI Engineer"],
+        "Game Designer": ["Game Developer"],
+        "Game Developer": ["Game Designer"]
+    }
+
+    excluded_titles = exclusion_rules.get(search_term, [])
+    return [title for title in matched_titles if title not in excluded_titles]

@@ -2,179 +2,312 @@
 <html>
 
 <head>
-    <title>Job Search</title>
+    <title>IT Jobs Market Insights</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Explore IT job market trends in Europe and the UK.">
+    <meta name="keywords" content="IT, jobs, market, trends, Europe, UK, skills, locations">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
     <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel="icon" type="image/png" href="../static/images/favicon.ico">
+    <link rel="apple-touch-icon" href="../static/images/apple-touch-icon-iphone-60x60.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="../static/images/apple-touch-icon-ipad-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="../static/images/apple-touch-icon-iphone-retina-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="../static/images/apple-touch-icon-ipad-retina-152x152.png">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 
 <body>
-    <div class="header-wrapper">
-        <div id="header">
-            <div class="logo"></div>
-            <h1>Job Market Insights</h1>
+    <div class="content-wrapper">
+        <div class="header-wrapper">
+            <div id="header">
+                <div class="logo"></div>
+                <h1>IT Job Market Insights</h1>
+            </div>
+            <div>
+                <p class="lead">Explore IT jobs market trends in Europe and the UK.</p>
+                <p class="sub-lead">Based on the currently opened positions on major job-boards. Updated every day.</p>
+                <p class="sub-lead">Discover top required skills and top locations with the most jobs available.</p>
+            </div>
+        </div>
+        
+        <div id="searchFormContainer">
+            <form id="searchForm">
+                <label for="keywordsInput">Job Title:</label>
+                <input type="text" id="keywordsInput" placeholder="Job Title" name="jobs" required>
+                <div id="keywordsInputError" class="error-message"></div>
+                <label for="locationInput">Location:</label>
+                <input type="text" id="locationInput" placeholder="Location" name="location" required>
+                <div id="locationInputError" class="error-message"></div>
+                <br>
+                <button type="submit">Explore</button>
+            </form>
+        </div>
+        <div id="loader" style="display: none;">
+            <div id="progressMessage">
+                Hold on, fetching the freshest data.
+            </div>
+            <div id="progressBarContainer">
+                <div class="progress progress-infinite">
+                    <div class="progress-bar3">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="noDataMessage" style="display: none;">
+            Seems there's no data for this request.
+        </div>
+        <div id="topSkillsPlotContainer" style="display: none;">
+            <!-- <h2>Top Skills:</h2> -->
+            <div id="topSkillsPlot"></div>
+        </div>
+        <div id="topCitiesPlotContainer" style="display: none;">
+            <!-- <h2>Top Cities:</h2> -->
+            <div id="topCitiesPlot"></div>
+        </div>
+        <div id = "jobsDistributionPlotContainer" style="display: none;">
+            <!-- <h2>Job distribution by country</h2> -->
+            <div id="jobsDistributionPlot"></div>
         </div>
     </div>
-    <div id="searchFormContainer">
-        <form id="searchForm">
-            <label for="keywords">Position:</label>
-            <input type="text" id="keywordsInput" placeholder="Job Title" name="keywords" required>
-            <br>
-            <label for="location">Location:</label>
-            <input type="text" id="locationInput" placeholder="Country" name="location" required>
-            <br>
-            <button type="submit">Explore</button>
-        </form>
-    </div>
-    <div id="loader" style="display: none;">
-        <div id="progressMessage">
-            Fetching the freshest data, meanwhile you can check recent visualisations.<br> They are pretty accurate and will be updated automatically when the freshest data is gathered.
-        </div>
-        <div id="progressBarContainer">
-            <div class="progress progress-infinite">
-                <div class="progress-bar3">
+    <div id="footer">
+        <div class="footer-content">
+            <p>Created by <a href="https://okserm.com" target="_blank" rel="noopener noreferrer" title="okserm.com (opens in a new tab)" aria-label="okserm.com (opens in a new tab)">Oksana Erm</a> | 2023</p>
+            <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button"
+                data-slug="okserm" data-color="#FFDD00" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee"
+                data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>
+            <!-- Contact Form -->
+            <div class="contact-form">
+                <button id="contactBtn" class="contact-btn">Contact Me</button>
+                <div id="contactFormContainer" class="contact-form-container" style="display: none;">
+                    <form id="contactForm">
+                        <input type="text" id="name" name="name" placeholder="Your Name" required>
+                        <input type="email" id="email" name="email" placeholder="Your Email" required>
+                        <textarea id="message" name="message" placeholder="Your Message" required></textarea>
+                        <button type="submit" class="send-btn">Send</button>
+                    </form>
+                    <div id="formFeedback" class="form-feedback"></div>
                 </div>
             </div>
         </div>
     </div>
-    <div id="visualizationMessage" style="display: none;">
-        We're currently preparing your visualizations. Please hold on, they'll be ready soon.
-    </div>
-    <div id="noDataMessage" style="display: none;">
-        Seems there's no data for this request.
-    </div>
-    <div id="topSkillsPlotContainer" style="display: none;">
-        <!-- <h2>Top Skills:</h2> -->
-        <div id="topSkillsPlot"></div>
-    </div>
-    <div id="topCitiesPlotContainer" style="display: none;">
-        <!-- <h2>Top Cities:</h2> -->
-        <div id="topCitiesPlot"></div>
-    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="../static/js/main.js"></script>
     <script>
         $(document).ready(function () {
-                let socket = io();
+            let availableJobs = [];
+            let availableLocations = [];
 
-                socket.on('connect', function () {
-                    socket.emit('my event', { data: 'I\'m connected!' });
+            function populateAutocompleteInputs() {
+                $.get("/get-available-data", function (data) {
+                    availableJobs = data.available_jobs;
+                    availableLocations = data.available_locations;
 
-                    $('#searchForm').submit(function (event) {
-                        event.preventDefault();
-                        showLoader();
-
-                        // Clear the plots
-                        $('#topSkillsPlotContainer').hide();
-                        $('#topCitiesPlotContainer').hide();
-
-                        let keywords = $('#keywordsInput').val();
-                        let location = $('#locationInput').val();
-                        socket.emit('search', { keywords: keywords, location: location });
-                        showVisualizationMessage();
+                    $('#keywordsInput').autocomplete({
+                        source: availableJobs
+                    });
+                    $('#locationInput').autocomplete({
+                        source: availableLocations
                     });
                 });
+            }
 
-                socket.on('progress_update', handleProgressEvent);
-                socket.on('existing_data_plots', handleExistingPlotData);
-                socket.on('update_plot', handleUpdatedPlotData);
+            function isValidInput(input, validOptions) {
+                return validOptions.includes(input);
+            }
 
-                socket.on('no_data', function () {
-                    $('#loader').show();
-                    showVisualizationMessage();
+            function showError(inputId, message) {
+                $(inputId).addClass('error');
+                $(inputId + 'Error').text(message).show();
+                hideLoader();
+            }
+
+            function hideError(inputId) {
+                $(inputId).removeClass('error');
+                $(inputId + 'Error').hide();
+            }
+
+            populateAutocompleteInputs();
+            let socket = io();
+
+            socket.on('connect', function () {
+                socket.emit('my event', { data: 'I\'m connected!' });
+
+                $('#searchForm').submit(function (event) {
+                    event.preventDefault();
+                    hideError('#keywordsInput');
+                    hideError('#locationInput');
+                    showLoader();
+
+                    // Clear the plots
                     $('#topSkillsPlotContainer').hide();
                     $('#topCitiesPlotContainer').hide();
+                    $('#jobsDistributionPlotContainer').hide();
+
+                    let keywords = $('#keywordsInput').val();
+                    let location = $('#locationInput').val();
+
+                    // Validate inputs against available options
+                    if (!isValidInput(keywords, availableJobs)) {
+                        showError('#keywordsInput', 'Please select a valid job title from the list');
+                        return;
+                    }
+                    if (!isValidInput(location, availableLocations)) {
+                        showError('#locationInput', 'Please select a valid location from the list');
+                        return;
+                    }
+
+                    socket.emit('search', { keywords: keywords, location: location });
+
+                    socket.on('existing_data_plots', handleExistingPlotData);
                 });
+            });
 
-                function handleExistingPlotData(data) {
-                    console.log('Existing data plots received.');
-                    handlePlotData(data, 'newPlot');
-                }
+            function handleExistingPlotData(data) {
+                handlePlotData(data, 'newPlot');
+            }
 
-                function handleUpdatedPlotData(data) {
-                    console.log('Plot update received.');
-                    handleProgressUpdate(data.state);
-                    handlePlotData(data, 'react'); 
-                }
+            function handleUpdatedPlotData(data) {
+                console.log('Plot update received.');
+                handleProgressUpdate(data.state);
+                handlePlotData(data, 'react'); 
+            }
 
-                function handlePlotData(data, plotMethod) {
-                    let skillsKey = (plotMethod === "newPlot") ? 'top_skills_plot' : 'new_top_skills_json';
-                    let citiesKey = (plotMethod === "newPlot") ? 'top_cities_plot' : 'new_top_cities_json';
+            function handlePlotData(data, plotMethod) {
+            if (data['top_skills_plot'] && data['top_cities_plot'] && data['jobs_distribution_plot']) {
+                try {
+                    let isMobile = window.innerWidth < 600;
 
-                    if (data[skillsKey] && data[citiesKey]) {
-                        try {
-                            let topSkillsPlot = JSON.parse(data[skillsKey]);
-                            let topCitiesPlot = JSON.parse(data[citiesKey]);
+                    let topSkillsPlot = JSON.parse(data['top_skills_plot']);
+                    let topCitiesPlot = JSON.parse(data['top_cities_plot']);
+                    let jobsDistributionPlot = JSON.parse(data['jobs_distribution_plot']);
 
-                            if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
-                                hideVisualizationMessage();
-                                $('#topSkillsPlotContainer').show();
-                                $('#topCitiesPlotContainer').show();
-
-                                if (plotMethod === "newPlot") {
-                                    Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
-                                    Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
-                                } else if (plotMethod === "react") {
-                                    hideLoader();
-                                    Plotly.react('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
-                                    Plotly.react('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
-                                }
-                            } else {
-                                showVisualizationMessage();
+                    let updateLayoutTopSkills = {
+                        title: 'Top Skills',
+                        yaxis: {
+                            automargin: true,
+                            tickfont: {
+                                size: 11
                             }
-                        } catch (error) {
-                            console.error('Error parsing JSON data:', error);
-                            showNoDataMessage();
+                        },
+                        xaxis: {
+                            automargin: true
+                        },
+                        legend: {
+                            orientation: 'h',
+                            x: 0,
+                            y: -0.15
+                        },
+                        margin: {
+                            l: 5,
+                            r: 5,
+                            t: 50,
+                            b: 50
+                        }
+                    };
+                    let updateLayoutTopCities = {
+                        title: 'Jobs by City',
+                        yaxis: {
+                            automargin: true,
+                            tickfont: {
+                                size: 11
+                            }
+                        },
+                        xaxis: {
+                            automargin: true
+                        },
+                        legend: {
+                            orientation: 'h',
+                            x: 0,
+                            y: -0.15
+                        },
+                        margin: {
+                            l: 12,
+                            r: 12,
+                            t: 50,
+                            b: 50
+                        }
+                    };
+                    let updateLayoutJobsDistribution = {
+                        title: 'Jobs by Country',
+                        yaxis: {
+                            automargin: true,
+                            tickfont: {
+                                size: 11
+                            },
+                            categoryorder: 'total ascending',
+                        },
+                        xaxis: {
+                            automargin: true
+                        },
+                        legend: {
+                            orientation: 'h',
+                            x: 0,
+                            y: -0.15
+                        },
+                        margin: {
+                            l: 12,
+                            r: 12,
+                            t: 50,
+                            b: 50
+                        }
+                    };
+
+
+                    if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
+                        hideLoader();
+                        $('#topSkillsPlotContainer').show();
+                        $('#topCitiesPlotContainer').show();
+                        $('#jobsDistributionPlotContainer').show();
+
+
+                        Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
+                        Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
+                        Plotly.newPlot('jobsDistributionPlot', jobsDistributionPlot.data, jobsDistributionPlot.layout);
+                        
+                        if (isMobile) {
+                            Plotly.relayout('topSkillsPlot', updateLayoutTopSkills);
+                            Plotly.relayout('topCitiesPlot', updateLayoutTopCities);
+                            Plotly.relayout('jobsDistributionPlot', updateLayoutJobsDistribution);
                         }
                     } else {
-                        console.log('No data received.');
-                        showVisualizationMessage();
+                        console.log('Invalid plot data received.');
+                        showNoDataMessage();
                     }
+                } catch (error) {
+                    console.error('Error parsing JSON data:', error);
+                    showNoDataMessage();
                 }
+            } else {
+                console.log('No data received.');
+                showNoDataMessage();
+            }}
 
-                function validatePlotData(plotData) {
-                    return typeof plotData === 'object' && plotData !== null &&
-                        plotData.hasOwnProperty('data') && plotData.hasOwnProperty('layout') &&
-                        Array.isArray(plotData.data) && plotData.data.length > 0;
-                }
+            function validatePlotData(plotData) {
+                return typeof plotData === 'object' && plotData !== null &&
+                    plotData.hasOwnProperty('data') && plotData.hasOwnProperty('layout') &&
+                    Array.isArray(plotData.data) && plotData.data.length > 0;
+            }
 
-                function handleProgressEvent(data) {
-                    console.log('Progress update received:', data.message);
-                    handleProgressUpdate(data.state);
-                }
+            function showLoader() {
+                $('#loader').show();
+                $('#noDataMessage').hide();
+            }
 
-                function handleProgressUpdate(state) {
-                    if (state === "in_progress") {
-                        showLoader();
-                    } else if (state === "done") {
-                        hideLoader();
-                        hideVisualizationMessage();
-                    }
-                }
+            function hideLoader() {
+                $('#loader').hide();
+            }
 
-                function showLoader() {
-                    $('#loader').show();
-                    $('#noDataMessage').hide();
-                }
-
-                function hideLoader() {
-                    $('#loader').hide();
-                }
-
-                function showNoDataMessage() {
-                    $('#noDataMessage').show();
-                    hideLoader();
-                }
-
-                function showVisualizationMessage() {
-                    $('#visualizationMessage').show();
-                }
-
-                function hideVisualizationMessage() {
-                    $('#visualizationMessage').hide();
-                }
-
-            });
+            function showNoDataMessage() {
+                $('#noDataMessage').show();
+                hideLoader();
+            }
+        });
 
     </script>
 </body>
