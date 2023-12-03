@@ -204,21 +204,10 @@ def translate_title(title, target_lang):
     return preprocessed_title
     
 
-def match_title(job_title, tech_jobs):
-    job_title = preprocess_title(job_title)
-    job_title_en = translate_title(job_title)
-
-    match = process.extractOne(
-        job_title_en, tech_jobs, scorer=fuzz.token_set_ratio)
-
-    if match and match[1] >= 60:  
-        return match[0]
-    return job_title
-
-
 @retry(wait=wait_fixed(2), stop=stop_after_attempt(3))
 def get_job_data(keywords=None, country=None):
-    translated_keywords_en = translate_title(keywords) if keywords else None
+    # Preprocess and clean the English keywords
+    keywords_en = preprocess_title(keywords) if keywords else None
     primary_language = get_primary_language(country)
     translated_keywords_local = translate_title(
         keywords, target_lang=primary_language) if keywords else None
@@ -234,7 +223,7 @@ def get_job_data(keywords=None, country=None):
         if keywords:
             for title in tech_jobs:
                 score_en = fuzz.ratio(
-                    translated_keywords_en, title) if translated_keywords_en else 0
+                    keywords_en, title) if keywords_en else 0
                 score_local = fuzz.ratio(
                     translated_keywords_local, title) if translated_keywords_local else 0
 
