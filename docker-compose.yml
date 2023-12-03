@@ -3,7 +3,7 @@ version: '3.8'
 services:
   web:
     build: .
-    command: gunicorn -b :8000 app:app --workers=3 --threads=3
+    command: gunicorn -b :5000 app:app --workers=3 --threads=3
     volumes:
       - .:/usr/src/app
     ports:
