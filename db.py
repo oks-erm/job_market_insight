@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from urllib import parse
 from fuzzywuzzy import fuzz, process
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 from langdetect import detect
 from geotext import GeoText
 import pandas as pd
@@ -176,18 +176,6 @@ def is_visited_link(job_id):
     return result is not None
 
 
-translator = Translator()
-
-# translate for sql query
-def translate_text(text, target_lang='en'):
-    try:
-        translated = translator.translate(text, dest=target_lang).text
-        return translated
-    except Exception as e:
-        print(f"Translation error: {e}")
-        return text
-
-
 def get_primary_language(country):
     return country_to_language.get(country.lower(), 'en')
 
@@ -200,14 +188,20 @@ def preprocess_title(title):
     title = re.sub(r'\s+', ' ', title).strip()
     return title
 
-# translate job titles retrieved from the database for analysis
-def translate_title(title, target_lang='en'):
-    detected_lang = detect(title)
-    if detected_lang != target_lang:
-        translated = translator.translate(
-            title, src=detected_lang, dest=target_lang).text
-        return translated.lower()
-    return title.lower()
+# translate enqueried title into local language of a searched country
+def translate_title(title, target_lang):
+    preprocessed_title = preprocess_title(title)
+    # Translate only if target language is not English
+    if target_lang != 'en':
+        try:
+            translator = GoogleTranslator(source='en', target=target_lang)
+            translated = translator.translate(
+                preprocessed_title)
+            return translated.lower()
+        except Exception as e:
+            print(f"Translation error: {e}")
+            return preprocessed_title
+    return preprocessed_title
     
 
 def match_title(job_title, tech_jobs):
@@ -224,9 +218,9 @@ def match_title(job_title, tech_jobs):
 
 @retry(wait=wait_fixed(2), stop=stop_after_attempt(3))
 def get_job_data(keywords=None, country=None):
-    translated_keywords_en = translate_text(keywords) if keywords else None
-    primary_language = get_primary_language(country) if country else 'en'
-    translated_keywords_local = translate_text(
+    translated_keywords_en = translate_title(keywords) if keywords else None
+    primary_language = get_primary_language(country)
+    translated_keywords_local = translate_title(
         keywords, target_lang=primary_language) if keywords else None
 
     try:
