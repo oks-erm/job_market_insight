@@ -22,7 +22,7 @@ if os.path.exists('env.py'):
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(32)
-app.config['DEBUG'] = True
+app.config['DEBUG'] = False
 app.config['MAIL_SERVER'] = os.environ.get('EMAIL_HOST')
 app.config['MAIL_PORT'] = os.environ.get('EMAIL_PORT')
 app.config['MAIL_USERNAME'] = os.environ.get('EMAIL_HOST_USER')

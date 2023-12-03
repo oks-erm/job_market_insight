@@ -1,0 +1,27 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9 
+
+  pre_build:
+    commands:
+      - echo Installing required packages
+      - pip install -r requirements.txt  
+
+  build:
+    commands:
+      - echo Building the application
+
+  post_build:
+    commands:
+      - echo Application build completed successfully
+
+artifacts:
+  files:
+    - '**/*'  
+
+cache:
+  paths:
+    - ~/.cache/pip
