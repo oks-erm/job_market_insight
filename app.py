@@ -20,16 +20,17 @@ if os.path.exists('env.py'):
     import env  # noqa # pylint: disable=unused-import
 
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = secrets.token_hex(32)
-app.config['DEBUG'] = False
-app.config['MAIL_SERVER'] = os.environ.get('EMAIL_HOST')
-app.config['MAIL_PORT'] = os.environ.get('EMAIL_PORT')
-app.config['MAIL_USERNAME'] = os.environ.get('EMAIL_HOST_USER')
-app.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_HOST_PASSWORD')
+application = Flask(__name__)
+application.config['SECRET_KEY'] = secrets.token_hex(32)
+application.config['DEBUG'] = False
+
+application.config['MAIL_SERVER'] = os.environ.get('EMAIL_HOST')
+application.config['MAIL_PORT'] = os.environ.get('EMAIL_PORT')
+application.config['MAIL_USERNAME'] = os.environ.get('EMAIL_HOST_USER')
+application.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_HOST_PASSWORD')
 
 # websocket
-socketio = SocketIO(app, 
+socketio = SocketIO(application,
                     message_queue='redis://localhost:6379/0', 
                     async_mode='threading', 
                     engineio_logger=True, 
@@ -47,17 +48,17 @@ celery_app = Celery('celery_app',
 celery_app.conf.beat_schedule = create_beat_schedule(tech_jobs, country_dict)
 celery_app.conf.timezone = 'UTC'
 
-CORS(app)
-mail = Mail(app)
+CORS(application)
+mail = Mail(application)
 create_table()
 
 
-@app.route('/')
+@application.route('/')
 def index():
     return render_template('index.html')
 
 
-@app.route('/get-available-data')
+@application.route('/get-available-data')
 def get_available_data():
     return {
         "available_jobs": tech_jobs,
@@ -65,7 +66,7 @@ def get_available_data():
     }
 
 
-@app.route('/process-contact-form', methods=['POST'])
+@application.route('/process-contact-form', methods=['POST'])
 def process_contact_form():
     data = request.get_json()
     name = data.get('name', '').strip()
@@ -162,4 +163,4 @@ celery_app.autodiscover_tasks(['app'])
 
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=8000)
+    socketio.run(application, host='0.0.0.0', port=8000)
