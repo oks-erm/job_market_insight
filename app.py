@@ -31,15 +31,15 @@ application.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_HOST_PASSWORD')
 
 # websocket
 socketio = SocketIO(application,
-                    message_queue='redis://localhost:6379/0', 
+                    message_queue=os.environ.get('REDIS_URL'),
                     async_mode='threading', 
                     engineio_logger=True, 
                     websocket_transports=['websocket', 'xhr-polling'])
 
 # celery
 celery_app = Celery('celery_app', 
-                    broker='redis://localhost:6379/0',
-                    backend='redis://localhost:6379/0',
+                    broker=os.environ.get('REDIS_URL'),
+                    backend=os.environ.get('REDIS_URL'),
                     broker_connection_retry_on_startup=True,
                     task_serializer='json',  
                     accept_content=['json'],
