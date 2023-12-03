@@ -84,8 +84,8 @@ def process_contact_form():
     # Send email
     send_email(
         subject='ITJM insight app Contact Form',
-        sender=app.config.get('MAIL_USERNAME'),
-        recipients=[app.config.get('MAIL_USERNAME')],
+        sender=application.config.get('MAIL_USERNAME'),
+        recipients=[application.config.get('MAIL_USERNAME')],
         text_body=f"Name: {sanitize_input(name)}\nEmail: {sanitize_input(email)}\nMessage: {sanitize_input(message)}"
     )
 
