@@ -1,0 +1,18 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Preparing to deploy Flask application
+
+  build:
+    commands:
+      - echo No build needed for the Docker-based Flask application
+
+  post_build:
+    commands:
+      - echo Build completed
+
+artifacts:
+  files:
+    - '**/*'
