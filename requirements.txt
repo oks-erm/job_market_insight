@@ -35,7 +35,7 @@ cymem==2.0.7
 debugpy==1.6.7
 decorator==5.1.1
 defusedxml==0.7.1
-dnspython==2.4.0
+dnspython>=1.15.0
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl#sha256=83276fc78a70045627144786b52e1f2728ad5e29e5e43916ec37ea9c26a11212
 eventlet==0.33.3
 exceptiongroup==1.1.2
@@ -59,8 +59,8 @@ h11==0.9.0
 h2==3.2.0
 hpack==3.0.0
 hstspreload==2023.1.1
-httpcore>=0.17.3
-httpx>=0.18.0
+httpcore==0.9.1
+httpx>=0.13.3
 hyperframe==5.2.0
 idna==2.10
 importlib-metadata==6.7.0
