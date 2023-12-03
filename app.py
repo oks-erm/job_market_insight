@@ -163,4 +163,4 @@ celery_app.autodiscover_tasks(['app'])
 
 
 if __name__ == '__main__':
-    socketio.run(application)
+    socketio.run(application, port=8000)
