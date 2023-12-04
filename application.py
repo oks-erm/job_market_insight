@@ -159,7 +159,7 @@ def process_search_request(keywords, location):
     }
 
 
-celery_app.autodiscover_tasks(['app'])
+celery_app.autodiscover_tasks(['application'])
 
 
 if __name__ == '__main__':

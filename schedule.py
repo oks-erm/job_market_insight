@@ -17,7 +17,7 @@ def create_beat_schedule(positions, countries):
     for position, (country_name, country_code) in product(positions, countries.items()):
         task_name = f'scrape-{position}-in-{country_name}'
         task_info = {
-            'task': 'app.scrape_linkedin_data',
+            'task': 'application.scrape_linkedin_data',
             'schedule': timedelta(hours=5),
             'args': (position, country_name)
         }

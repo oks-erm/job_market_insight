@@ -17,7 +17,7 @@ services:
 
   celery_worker:
     build: .
-    command: celery -A app:celery_app worker --loglevel=info --concurrency=8
+    command: celery -A application:celery_app worker --loglevel=info --concurrency=8
     volumes:
       - .:/usr/src/app
     env_file:
@@ -27,7 +27,7 @@ services:
 
   celery_beat:
     build: .
-    command: celery -A app:celery_app beat --loglevel=info --schedule=/usr/src/app/tmp/celerybeat-schedule
+    command: celery -A application:celery_app beat --loglevel=info --schedule=/usr/src/app/tmp/celerybeat-schedule
     volumes:
       - .:/usr/src/app
       - celerybeat-schedule:/usr/src/app/tmp

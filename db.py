@@ -210,6 +210,7 @@ def get_job_data(keywords=None, country=None):
     primary_language = get_primary_language(country)
     translated_keywords_local = translate_title(
         keywords, target_lang=primary_language) if keywords else None
+    print(translated_keywords_local)
 
     try:
         conn = psycopg2.connect(
@@ -226,7 +227,7 @@ def get_job_data(keywords=None, country=None):
                 score_local = fuzz.ratio(
                     translated_keywords_local, title) if translated_keywords_local else 0
 
-                if score_en > 67 or score_local > 67:
+                if score_en > 62 or score_local > 62:
                     matched_keywords.append(title)
 
         # Filter matched titles based on exclusion rules
@@ -299,7 +300,7 @@ def process_data(df):
 
     return df_sorted
 
-
+# Exclude matched titles that could cause confusion or compromise accuracy
 def filter_matched_titles(search_term, matched_titles):
     exclusion_rules = {
         "Front End Developer": ["Back End Developer"],

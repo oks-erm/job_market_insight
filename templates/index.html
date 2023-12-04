@@ -137,13 +137,19 @@
             let isSocketConnected = false;
 
             socket.on('connect', function () {
+                socket.emit('my event', { data: 'I\'m connected!' });
                 console.log("Connected to WebSocket");
                 isSocketConnected = true;
             });
 
-
             $('#searchForm').submit(function (event) {
                 event.preventDefault();
+
+                // Ensure WebSocket is connected before emitting
+                if (!isSocketConnected) {
+                    console.log("WebSocket not connected yet");
+                    return;
+                }
 
                 hideError('#keywordsInput');
                 hideError('#locationInput');
