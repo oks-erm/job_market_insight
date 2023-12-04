@@ -134,38 +134,42 @@
 
             populateAutocompleteInputs();
             let socket = io();
+            let isSocketConnected = false;
 
             socket.on('connect', function () {
-                socket.emit('my event', { data: 'I\'m connected!' });
+                console.log("Connected to WebSocket");
+                isSocketConnected = true;
+            });
 
-                $('#searchForm').submit(function (event) {
-                    event.preventDefault();
-                    hideError('#keywordsInput');
-                    hideError('#locationInput');
-                    showLoader();
 
-                    // Clear the plots
-                    $('#topSkillsPlotContainer').hide();
-                    $('#topCitiesPlotContainer').hide();
-                    $('#jobsDistributionPlotContainer').hide();
+            $('#searchForm').submit(function (event) {
+                event.preventDefault();
 
-                    let keywords = $('#keywordsInput').val();
-                    let location = $('#locationInput').val();
+                hideError('#keywordsInput');
+                hideError('#locationInput');
+                showLoader();
 
-                    // Validate inputs against available options
-                    if (!isValidInput(keywords, availableJobs)) {
-                        showError('#keywordsInput', 'Please select a valid job title from the list');
-                        return;
-                    }
-                    if (!isValidInput(location, availableLocations)) {
-                        showError('#locationInput', 'Please select a valid location from the list');
-                        return;
-                    }
+                // Clear the plots
+                $('#topSkillsPlotContainer').hide();
+                $('#topCitiesPlotContainer').hide();
+                $('#jobsDistributionPlotContainer').hide();
 
-                    socket.emit('search', { keywords: keywords, location: location });
+                let keywords = $('#keywordsInput').val();
+                let location = $('#locationInput').val();
 
-                    socket.on('existing_data_plots', handleExistingPlotData);
-                });
+                // Validate inputs against available options
+                if (!isValidInput(keywords, availableJobs)) {
+                    showError('#keywordsInput', 'Please select a valid job title from the list');
+                    return;
+                }
+                if (!isValidInput(location, availableLocations)) {
+                    showError('#locationInput', 'Please select a valid location from the list');
+                    return;
+                }
+
+                socket.emit('search', { keywords: keywords, location: location });
+
+                socket.on('existing_data_plots', handleExistingPlotData);
             });
 
             function handleExistingPlotData(data) {
