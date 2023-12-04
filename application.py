@@ -102,7 +102,7 @@ def send_email(subject, sender, recipients, text_body):
     mail.send(msg)
 
 
-@celery_app.task(bind=True, name='app.scrape_linkedin_data', max_retries=3)
+@celery_app.task(bind=True, name='application.scrape_linkedin_data', max_retries=3)
 def scrape_linkedin_data(self, position, country_name, *args, **kwargs):
     print(f"Scraping FROM CELERY APP for {position} in {country_name}")
     url = generate_link(position, country_name)
