@@ -208,9 +208,6 @@ def get_job_data(keywords=None, country=None):
     # Preprocess and clean the English keywords
     keywords_en = preprocess_title(keywords) if keywords else None
     primary_language = get_primary_language(country)
-    translated_keywords_local = translate_title(
-        keywords, target_lang=primary_language) if keywords else None
-    print(translated_keywords_local)
 
     try:
         conn = psycopg2.connect(
@@ -219,16 +216,16 @@ def get_job_data(keywords=None, country=None):
         cur = conn.cursor()
 
         # Fuzzy matching for job titles
-        matched_keywords = []
+        matched_keywords = set()
         if keywords:
             for title in tech_jobs:
-                score_en = fuzz.ratio(
-                    keywords_en, title) if keywords_en else 0
-                score_local = fuzz.ratio(
-                    translated_keywords_local, title) if translated_keywords_local else 0
-
-                if score_en > 62 or score_local > 62:
-                    matched_keywords.append(title)
+                score_en = fuzz.ratio(keywords_en, title) if keywords_en else 0
+                if score_en > 62:
+                    matched_keywords.add(title)
+                    if primary_language != 'en':
+                        translated_title = translate_title(
+                            title, target_lang=primary_language)
+                        matched_keywords.add(translated_title)
 
         # Filter matched titles based on exclusion rules
         filtered_keywords = filter_matched_titles(keywords, matched_keywords)
