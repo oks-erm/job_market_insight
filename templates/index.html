@@ -42,7 +42,19 @@
                 <input type="text" id="locationInput" placeholder="Location" name="location" required>
                 <div id="locationInputError" class="error-message"></div>
                 <br>
-                <button type="submit">Explore</button>
+                <button type="submit">
+                    <div id="buttonLoader" style="display: none;">
+                        <span id="connectionMessage">
+                            Connecting
+                        </span>
+                        <span class="spinner">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </span>
+                    </div>
+                    <span id="explore">Explore</span>
+                </button>
             </form>
         </div>
         <div id="loader" style="display: none;">
@@ -139,6 +151,8 @@
             socket.on('connect', function () {
                 socket.emit('my event', { data: 'I\'m connected!' });
                 console.log("Connected to WebSocket");
+                $('#buttonLoader').hide();
+                $('#explore').show();
                 isSocketConnected = true;
             });
 
@@ -147,6 +161,8 @@
 
                 // Ensure WebSocket is connected before emitting
                 if (!isSocketConnected) {
+                    $('#buttonLoader').show();
+                    $('#explore').hide();
                     console.log("WebSocket not connected yet");
                     return;
                 }
