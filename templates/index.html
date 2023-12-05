@@ -146,28 +146,19 @@
 
             populateAutocompleteInputs();
 
-            // WebSocket connection
+            // WebSocket connection setup
             let socket = io();
             let isSocketConnected = false;
             let retryCount = 0;
             const maxRetries = 5;
-            let retryDelay = 2000; // Initial retry delay 
-            const maxRetryDelay = 30000; // Maximum delay
+            let retryDelay = 2000; // 2 seconds
+            const maxRetryDelay = 30000; // 30 seconds
 
+            // Handle successful WebSocket connection
             socket.on('connect', function () {
                 socket.emit('my event', { data: 'I\'m connected!' });
                 console.log("Connected to WebSocket");
-                $('#buttonLoader').hide();
-                $('#explore').show();
-                isSocketConnected = true;
-                retryCount = 0; // Reset retry count on successful connection
-                $('#noDataMessage').hide(); // Hide any error messages
-            });
-
-            socket.on('disconnect', function (reason) {
-                console.warn('Disconnected:', reason);
-                isSocketConnected = false;
-                handleDisconnection();
+                resetConnectionState();
             });
 
             socket.on('disconnect', handleDisconnection);
@@ -176,9 +167,9 @@
             socket.on('error', handleConnectionError);
             socket.on('server_error', handleConnectionError);
 
+            // Handle form submission
             $('#searchForm').submit(function (event) {
                 event.preventDefault();
-
                 if (isSocketConnected) {
                     sendSearchRequest();
                 } else {
@@ -229,30 +220,34 @@
                         if (!isSocketConnected) {
                             console.log(`Retrying WebSocket connection... Attempt ${retryCount + 1}`);
                             socket.connect();
-                        }
-                        if (isSocketConnected) {
-                            console.log("WebSocket reconnected, sending search request again...");
+                        } else {
                             sendSearchRequest();
-                        } else if (retryCount === maxRetries) {
-                            showConnectionErrorMessage("Failed to connect after multiple attempts.");
                         }
                         retryCount++;
-                        retryDelay = Math.min(retryDelay * 2, maxRetryDelay); // Exponential backoff with max limit
+                        retryDelay = Math.min(retryDelay * 2, maxRetryDelay); // Exponential backoff
                     }, retryDelay);
+                } else {
+                    showConnectionErrorMessage("Failed to connect after multiple attempts.");
                 }
             }
                                     
             function handleDisconnection() {
-                $('#buttonLoader').show();
-                $('#explore').hide();
+                console.warn('WebSocket Disconnected. Attempting to reconnect...');
+                isSocketConnected = false;
                 retrySearchRequest();
             }
 
             function handleConnectionError(error) {
                 console.error('WebSocket Connection Error:', error);
-                if (!isSocketConnected) {
-                    retrySearchRequest();
-                }
+            }
+
+            function resetConnectionState() {
+                $('#buttonLoader').hide();
+                $('#explore').show();
+                isSocketConnected = true;
+                retryCount = 0;
+                retryDelay = 2000;
+                $('#noDataMessage').hide();
             }
 
             function showConnectionErrorMessage(message) {
