@@ -159,6 +159,7 @@
                 $('#explore').show();
                 isSocketConnected = true;
                 retryCount = 0; // Reset retry count on successful connection
+                $('#noDataMessage').hide(); // Hide any error messages
             });
 
             socket.on('disconnect', function (reason) {
@@ -213,25 +214,18 @@
 
                 socket.on('existing_data_plots', handleExistingPlotData);
 
-                socket.on('connect_error', function (error) {
-                    console.error('Connection Error:', error);
+                socket.on('disconnect', handleDisconnection);
+                socket.on('connect_error', handleConnectionError);
+                socket.on('connect_timeout', handleConnectionError);
+                socket.on('error', handleConnectionError);
+                socket.on('server_error', handleConnectionError);
+            }
+
+            function handleConnectionError(error) {
+                console.error('WebSocket Connection Error:', error);
+                if (!isSocketConnected) {
                     retrySearchRequest();
-                });
-
-                socket.on('connect_timeout', function (timeout) {
-                    console.error('Connection Timeout:', timeout);
-                    retrySearchRequest();
-                });
-
-                socket.on('error', function (error) {
-                    console.error('WebSocket Error:', error);
-                    showConnectionErrorMessage('Connection error occurred. Please check your connection.');
-                });
-
-                socket.on('server_error', function (error) {
-                    console.error('Server Error:', error);
-                    showConnectionErrorMessage('A server error occurred. Please try again later.');
-                });
+                }
             }
 
             function retrySearchRequest() {

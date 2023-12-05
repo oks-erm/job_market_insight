@@ -1,11 +1,11 @@
+from gevent import monkey
+monkey.patch_all()
 import requests
 import secrets
 import traceback
 import plots
 import re
 import os
-from gevent import monkey
-monkey.patch_all()
 from flask_mail import Mail, Message
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
@@ -36,7 +36,7 @@ socketio = SocketIO(application,
                     message_queue=os.environ.get('REDIS_URL'),
                     async_mode='gevent', 
                     engineio_logger=True, 
-                    websocket_transports=['websocket', 'xhr-polling'])
+                    websocket_transports=['websocket'])
 
 # celery
 celery_app = Celery('celery_app', 
