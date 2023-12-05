@@ -4,6 +4,8 @@ import traceback
 import plots
 import re
 import os
+from gevent import monkey
+monkey.patch_all()
 from flask_mail import Mail, Message
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
@@ -32,9 +34,9 @@ application.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_HOST_PASSWORD')
 # websocket
 socketio = SocketIO(application,
                     message_queue=os.environ.get('REDIS_URL'),
-                    async_mode='threading', 
+                    async_mode='gevent', 
                     engineio_logger=True, 
-                    websocket_transports=['websocket'])
+                    websocket_transports=['websocket', 'xhr-polling'])
 
 # celery
 celery_app = Celery('celery_app', 
@@ -129,6 +131,11 @@ def handle_search_event(data):
     location = data.get('location')
     response = process_search_request(keywords, location)
     emit('existing_data_plots', response)
+
+
+@socketio.on_error_default 
+def default_error_handler(e):
+    emit('server_error', {'error': str(e)})
 
 
 def process_search_request(keywords, location):
