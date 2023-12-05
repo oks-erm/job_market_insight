@@ -36,7 +36,7 @@ socketio = SocketIO(application,
                     message_queue=os.environ.get('REDIS_URL'),
                     async_mode='gevent', 
                     engineio_logger=True, 
-                    websocket_transports=['websocket'])
+                    websocket_transports=['websocket', 'xhr-polling'])
 
 # celery
 celery_app = Celery('celery_app', 
