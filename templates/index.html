@@ -154,72 +154,74 @@
             let retryDelay = 2000; // 2 seconds
             const maxRetryDelay = 30000; // 30 seconds
 
-            // Handle successful WebSocket connection
-            socket.on('connect', function () {
-                socket.emit('my event', { data: 'I\'m connected!' });
-                console.log("Connected to WebSocket");
-                resetConnectionState();
-            });
+            // Event handlers for WebSocket events
+            socket.on('connect', onConnect);
+            socket.on('disconnect', onDisconnect);
 
-            socket.on('disconnect', handleDisconnection);
-            socket.on('connect_error', handleConnectionError);
-            socket.on('connect_timeout', handleConnectionError);
-            socket.on('error', handleConnectionError);
-            socket.on('server_error', handleConnectionError);
-
-            // Handle form submission
             $('#searchForm').submit(function (event) {
                 event.preventDefault();
-                if (isSocketConnected) {
-                    sendSearchRequest();
-                } else {
-                    console.log("WebSocket not connected. Retrying...");
-                    retrySearchRequest();
-                }
+                sendSearchRequest();
             });
 
-            function sendSearchRequest() {
-                // Ensure WebSocket is connected before emitting
-                if (!isSocketConnected) {
-                    $('#buttonLoader').show();
-                    $('#explore').hide();
-                    console.log("WebSocket not connected yet");
-                    return;
-                }
-
-                hideError('#keywordsInput');
-                hideError('#locationInput');
-                showLoader();
-
-                // Clear the plots
-                $('#topSkillsPlotContainer').hide();
-                $('#topCitiesPlotContainer').hide();
-                $('#jobsDistributionPlotContainer').hide();
-
-                let keywords = $('#keywordsInput').val();
-                let location = $('#locationInput').val();
-
-                // Validate inputs against available options
-                if (!isValidInput(keywords, availableJobs)) {
-                    showError('#keywordsInput', 'Please select a valid job title from the list');
-                    return;
-                }
-                if (!isValidInput(location, availableLocations)) {
-                    showError('#locationInput', 'Please select a valid location from the list');
-                    return;
-                }
-
-                socket.emit('search', { keywords: keywords, location: location });
-
-                socket.on('existing_data_plots', handleExistingPlotData);
+            function onConnect() {
+                socket.emit('my event', { data: 'I\'m connected!' });
+                console.log("Connected to WebSocket");
+                // Handle successful connection
+                resetConnectionState();
+            }
+                                
+            function onDisconnect(reason) {
+                console.log("Disconnected from WebSocket:", reason);
+                isSocketConnected = false;
             }
 
-            function retrySearchRequest() {
+            function sendSearchRequest() {
+                // Check if the WebSocket is not connected
+                if (!isSocketConnected) {
+                    console.log("WebSocket not connected. Attempting to reconnect...");
+                    showConnectionErrorMessage("Connection lost. Attempting to reconnect...");
+                    // Attempt to reconnect
+                    socket.connect();
+                    scheduleRetry();
+                    return;
+
+                if (isSocketConnected) {
+                    // Hide error messages if visible
+                    hideError('#keywordsInput');
+                    hideError('#locationInput');
+                    showLoader();
+
+                    // Clear the plots
+                    $('#topSkillsPlotContainer').hide();
+                    $('#topCitiesPlotContainer').hide();
+                    $('#jobsDistributionPlotContainer').hide();
+
+                    let keywords = $('#keywordsInput').val();
+                    let location = $('#locationInput').val();
+
+                    // Validate inputs against available options
+                    if (!isValidInput(keywords, availableJobs)) {
+                        showError('#keywordsInput', 'Please select a valid job title from the list');
+                        return;
+                    }
+                    if (!isValidInput(location, availableLocations)) {
+                        showError('#locationInput', 'Please select a valid location from the list');
+                        return;
+                    }
+                    
+                    // Send the search request
+                    socket.emit('search', { keywords: keywords, location: location });
+                    socket.on('existing_data_plots', handleExistingPlotData);
+                    isLastRequestProcessed = true;
+                }
+            }
+        }
+
+            function scheduleRetry() {
                 if (retryCount < maxRetries) {
                     setTimeout(() => {
                         if (!isSocketConnected) {
-                            console.log(`Retrying WebSocket connection... Attempt ${retryCount + 1}`);
-                            socket.connect();
+                            console.log(`Attempt ${retryCount + 1} to reconnect and send request.`);
                         } else {
                             sendSearchRequest();
                         }
@@ -228,18 +230,6 @@
                     }, retryDelay);
                 } else {
                     showConnectionErrorMessage("Failed to connect after multiple attempts.");
-                }
-            }
-                                    
-            function handleDisconnection() {
-                console.warn('WebSocket Disconnected. Attempting to reconnect...');
-                isSocketConnected = false;
-                retrySearchRequest();
-            }
-
-            function handleConnectionError(error) {
-                if (!error.message.includes('xhr poll error')) {
-                    console.error('WebSocket Connection Error:', error);
                 }
             }
 
@@ -252,25 +242,10 @@
                 $('#noDataMessage').hide();
             }
 
-            function handleConnectionError(error) {
-                if (!isReconnectError(error)) {
-                    console.error('WebSocket Connection Error:', error);
-                }
-            }
-
-            function isReconnectError(error) {
-                const knownReconnectErrors = [
-                    'xhr post error',
-                    'xhr poll error',
-                    // ...
-                ];
-
-                for (let knownError of knownReconnectErrors) {
-                    if (error.message && error.message.includes(knownError)) {
-                        return true;
-                    }
-                }
-                return false;
+            function showConnectionErrorMessage(message) {
+                $('#buttonLoader').hide();
+                $('#explore').show();
+                $('#noDataMessage').text(message).show();
             }
 
             function handleExistingPlotData(data) {
