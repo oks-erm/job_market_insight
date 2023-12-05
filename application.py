@@ -36,7 +36,9 @@ socketio = SocketIO(application,
                     message_queue=os.environ.get('REDIS_URL'),
                     async_mode='gevent', 
                     engineio_logger=True, 
-                    websocket_transports=['websocket', 'xhr-polling'])
+                    websocket_transports=['websocket', 'xhr-polling'],
+                    cors_allowed_origins=['http://itjinsights-env.eba-6cv9ca2d.eu-central-1.elasticbeanstalk.com/', 'localhost:8000']
+                    )
 
 # celery
 celery_app = Celery('celery_app', 
