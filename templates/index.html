@@ -151,6 +151,8 @@
             let isSocketConnected = false;
             let retryCount = 0;
             const maxRetries = 5;
+            let retryDelay = 2000; // Initial retry delay 
+            const maxRetryDelay = 30000; // Maximum delay
 
             socket.on('connect', function () {
                 socket.emit('my event', { data: 'I\'m connected!' });
@@ -167,6 +169,12 @@
                 isSocketConnected = false;
                 handleDisconnection();
             });
+
+            socket.on('disconnect', handleDisconnection);
+            socket.on('connect_error', handleConnectionError);
+            socket.on('connect_timeout', handleConnectionError);
+            socket.on('error', handleConnectionError);
+            socket.on('server_error', handleConnectionError);
 
             $('#searchForm').submit(function (event) {
                 event.preventDefault();
@@ -213,27 +221,13 @@
                 socket.emit('search', { keywords: keywords, location: location });
 
                 socket.on('existing_data_plots', handleExistingPlotData);
-
-                socket.on('disconnect', handleDisconnection);
-                socket.on('connect_error', handleConnectionError);
-                socket.on('connect_timeout', handleConnectionError);
-                socket.on('error', handleConnectionError);
-                socket.on('server_error', handleConnectionError);
-            }
-
-            function handleConnectionError(error) {
-                console.error('WebSocket Connection Error:', error);
-                if (!isSocketConnected) {
-                    retrySearchRequest();
-                }
             }
 
             function retrySearchRequest() {
                 if (retryCount < maxRetries) {
-                    retryCount++;
                     setTimeout(() => {
                         if (!isSocketConnected) {
-                            console.log("Retrying WebSocket connection...");
+                            console.log(`Retrying WebSocket connection... Attempt ${retryCount + 1}`);
                             socket.connect();
                         }
                         if (isSocketConnected) {
@@ -242,13 +236,23 @@
                         } else if (retryCount === maxRetries) {
                             showConnectionErrorMessage("Failed to connect after multiple attempts.");
                         }
-                    }, 2000); // Retry after 2 seconds
+                        retryCount++;
+                        retryDelay = Math.min(retryDelay * 2, maxRetryDelay); // Exponential backoff with max limit
+                    }, retryDelay);
                 }
             }
-            
+                                    
             function handleDisconnection() {
-                showConnectionErrorMessage('Connection to the server has been lost. Attempting to reconnect...');
+                $('#buttonLoader').show();
+                $('#explore').hide();
                 retrySearchRequest();
+            }
+
+            function handleConnectionError(error) {
+                console.error('WebSocket Connection Error:', error);
+                if (!isSocketConnected) {
+                    retrySearchRequest();
+                }
             }
 
             function showConnectionErrorMessage(message) {
