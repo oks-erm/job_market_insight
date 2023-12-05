@@ -184,6 +184,7 @@
                     socket.connect();
                     scheduleRetry();
                     return;
+                }
 
                 if (isSocketConnected) {
                     // Hide error messages if visible
@@ -215,7 +216,6 @@
                     isLastRequestProcessed = true;
                 }
             }
-        }
 
             function scheduleRetry() {
                 if (retryCount < maxRetries) {
