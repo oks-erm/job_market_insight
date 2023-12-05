@@ -1,5 +1,3 @@
-from gevent import monkey
-monkey.patch_all()
 import requests
 import secrets
 import traceback
@@ -34,10 +32,9 @@ application.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_HOST_PASSWORD')
 # websocket
 socketio = SocketIO(application,
                     message_queue=os.environ.get('REDIS_URL'),
-                    async_mode='gevent', 
+                    async_mode='threading', 
                     engineio_logger=True, 
-                    websocket_transports=['websocket', 'xhr-polling'],
-                    cors_allowed_origins='*'
+                    websocket_transports=['websocket', 'xhr-polling']
                     )
 
 # celery

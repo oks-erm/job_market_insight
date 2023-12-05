@@ -1,10 +1,6 @@
-version: '3.8'
-
 services:
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile.web
+    build: .
     command: gunicorn -b 0.0.0.0:8000 -k gevent app:application --workers=3
     volumes:
       - .:/usr/src/app
@@ -18,22 +14,18 @@ services:
       - redis
 
   celery_worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.celery
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    build: .
+    command: celery -A app:celery_app worker --loglevel=info --concurrency=8
+    volumes:
+      - .:/usr/src/app
+    env_file:
+      - .env
     depends_on:
       - redis
-    redis:
-      image: "redis:alpine"
 
   celery_beat:
-    build:
-      context: .
-      dockerfile: Dockerfile.celery 
-    command: celery -A application:celery_app beat --loglevel=info --schedule=/usr/src/app/tmp/celerybeat-schedule
+    build: .
+    command: celery -A app:celery_app beat --loglevel=info --schedule=/usr/src/app/tmp/celerybeat-schedule
     volumes:
       - .:/usr/src/app
       - celerybeat-schedule:/usr/src/app/tmp
