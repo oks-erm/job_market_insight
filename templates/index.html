@@ -238,7 +238,9 @@
             }
 
             function handleConnectionError(error) {
-                console.error('WebSocket Connection Error:', error);
+                if (!error.message.includes('xhr poll error')) {
+                    console.error('WebSocket Connection Error:', error);
+                }
             }
 
             function resetConnectionState() {
@@ -250,10 +252,25 @@
                 $('#noDataMessage').hide();
             }
 
-            function showConnectionErrorMessage(message) {
-                hideLoader();
-                const errorMessage = message || "We're unable to process your request at the moment. Please try again later.";
-                $('#noDataMessage').text(errorMessage).show();
+            function handleConnectionError(error) {
+                if (!isReconnectError(error)) {
+                    console.error('WebSocket Connection Error:', error);
+                }
+            }
+
+            function isReconnectError(error) {
+                const knownReconnectErrors = [
+                    'xhr post error',
+                    'xhr poll error',
+                    // ...
+                ];
+
+                for (let knownError of knownReconnectErrors) {
+                    if (error.message && error.message.includes(knownError)) {
+                        return true;
+                    }
+                }
+                return false;
             }
 
             function handleExistingPlotData(data) {
