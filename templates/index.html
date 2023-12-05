@@ -145,8 +145,12 @@
             }
 
             populateAutocompleteInputs();
+
+            // WebSocket connection
             let socket = io();
             let isSocketConnected = false;
+            let retryCount = 0;
+            const maxRetries = 5;
 
             socket.on('connect', function () {
                 socket.emit('my event', { data: 'I\'m connected!' });
@@ -154,11 +158,21 @@
                 $('#buttonLoader').hide();
                 $('#explore').show();
                 isSocketConnected = true;
+                retryCount = 0; // Reset retry count on successful connection
             });
 
             $('#searchForm').submit(function (event) {
                 event.preventDefault();
 
+                if (isSocketConnected) {
+                    sendSearchRequest();
+                } else {
+                    console.log("WebSocket not connected. Retrying...");
+                    retrySearchRequest();
+                }
+            });
+
+            function sendSearchRequest() {
                 // Ensure WebSocket is connected before emitting
                 if (!isSocketConnected) {
                     $('#buttonLoader').show();
@@ -192,7 +206,43 @@
                 socket.emit('search', { keywords: keywords, location: location });
 
                 socket.on('existing_data_plots', handleExistingPlotData);
-            });
+            }
+
+            function retrySearchRequest() {
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    setTimeout(sendSearchRequest, 1000);
+                } else {
+                    console.log("Max retries reached. Please try again later.");
+                    $('#buttonLoader').hide();
+                    $('#explore').show();
+                }
+            }
+
+            function retrySearchRequest() {
+                    if (retryCount < maxRetries) {
+                        setTimeout(() => {
+                            if (isSocketConnected) {
+                                sendSearchRequest();
+                            } else {
+                                retryCount++;
+                                retrySearchRequest();
+                            }
+                        }, 2000); // Retry after 2 seconds
+                    } else {
+                        console.log("Failed to connect to WebSocket after retries.");
+                        $('#buttonLoader').hide();
+                        $('#explore').show();
+                        showConnectionErrorMessage();
+                    }
+                }
+
+            function showConnectionErrorMessage() {
+                hideLoader();
+
+                const errorMessage = "We're unable to process your request at the moment due to a connection issue. Please try again later.";
+                $('#noDataMessage').text(errorMessage).show();
+            }
 
             function handleExistingPlotData(data) {
                 handlePlotData(data, 'newPlot');
