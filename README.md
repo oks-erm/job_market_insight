@@ -15,16 +15,35 @@ ____
 
 - Real-Time Data Processing: Flask-SocketIO for handling real-time search requests and emitting job market data to clients.
 
-- Distributed Task Queue: Employs Celery with Redis as the message broker and result backend for handling asynchronous tasks like scraping job data.
+- Distributed Task Queue: Employs Celery with Redis as the message broker and result backend for handling asynchronous scraping job data.
 
-- Jupiter Notebooks: for data analysis.
+- Makes sure language barriers are not an issue: Uses Google Translate API.
 
-- Data Visualization: Offers dynamic data visualizations including top skills, city and country distributions, and job market trends based on user queries.
+- Data Visualization: Offers dynamic data visualizations including 
+
+    * top skills, 
+    * most open positions by city 
+    * jobs distribution by countries
+
+_________
+
+### Features in development:
+
+
+- Newsletters covering resent trends.
+
+- List of links to the job postings displayed on visualizations.
+
+- More data visualizations.
+
+- More job boards.
 
 _____
 ## How to run the application:
 
-Set environment variables for Redis URL, email configuration, and other necessary settings.
+Set environment variables for Redis URL, email configuration, and other necessary settings, don't forget to install requirements.
+
+* `pip install -r requirements.txt`
 
 * Run `python application.py` to start the application server.
 
@@ -39,11 +58,10 @@ _____
 - Flask-SocketIO
 - Celery
 - Redis
-- Jupiter Notebooks
 - Data Visualization Libraries (Plotly, Matplotlib, Seaborn)
 
 ____________________
 
 
-**Let me know if you managed to brake it!**
+--- Let me know how you broke it :) ---
 
