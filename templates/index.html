@@ -43,7 +43,7 @@
                 <div id="locationInputError" class="error-message"></div>
                 <br>
                 <button type="submit">
-                    <div id="buttonLoader" style="display: none;">
+                    <div id="buttonLoader">
                         <span id="connectionMessage">
                             Connecting
                         </span>
@@ -53,7 +53,7 @@
                             <div></div>
                         </span>
                     </div>
-                    <span id="explore">Explore</span>
+                    <span id="explore" style="display: none;">Explore</span>
                 </button>
             </form>
         </div>
@@ -151,12 +151,13 @@
             let isSocketConnected = false;
             let retryCount = 0;
             const maxRetries = 5;
-            let retryDelay = 2000; // 2 seconds
+            let retryDelay = 1000; // 1 second
             const maxRetryDelay = 30000; // 30 seconds
 
             // Event handlers for WebSocket events
             socket.on('connect', onConnect);
             socket.on('disconnect', onDisconnect);
+            socket.on('existing_data_plots', handleExistingPlotData);
 
             $('#searchForm').submit(function (event) {
                 event.preventDefault();
@@ -166,6 +167,8 @@
             function onConnect() {
                 socket.emit('my event', { data: 'I\'m connected!' });
                 console.log("Connected to WebSocket");
+                $('#explore').show();
+                $('#connectionMessage').hide();
                 // Handle successful connection
                 resetConnectionState();
             }
@@ -186,35 +189,33 @@
                     return;
                 }
 
-                if (isSocketConnected) {
-                    // Hide error messages if visible
-                    hideError('#keywordsInput');
-                    hideError('#locationInput');
-                    showLoader();
+                // Hide error messages if visible
+                hideError('#keywordsInput');
+                hideError('#locationInput');
+                showLoader();
 
-                    // Clear the plots
-                    $('#topSkillsPlotContainer').hide();
-                    $('#topCitiesPlotContainer').hide();
-                    $('#jobsDistributionPlotContainer').hide();
+                // Clear the plots
+                $('#topSkillsPlotContainer').hide();
+                $('#topCitiesPlotContainer').hide();
+                $('#jobsDistributionPlotContainer').hide();
 
-                    let keywords = $('#keywordsInput').val();
-                    let location = $('#locationInput').val();
+                let keywords = $('#keywordsInput').val();
+                let location = $('#locationInput').val();
 
-                    // Validate inputs against available options
-                    if (!isValidInput(keywords, availableJobs)) {
-                        showError('#keywordsInput', 'Please select a valid job title from the list');
-                        return;
-                    }
-                    if (!isValidInput(location, availableLocations)) {
-                        showError('#locationInput', 'Please select a valid location from the list');
-                        return;
-                    }
-                    
-                    // Send the search request
-                    socket.emit('search', { keywords: keywords, location: location });
-                    socket.on('existing_data_plots', handleExistingPlotData);
-                    isLastRequestProcessed = true;
+                // Validate inputs against available options
+                if (!isValidInput(keywords, availableJobs)) {
+                    showError('#keywordsInput', 'Please select a valid job title from the list');
+                    return;
                 }
+                if (!isValidInput(location, availableLocations)) {
+                    showError('#locationInput', 'Please select a valid location from the list');
+                    return;
+                }
+
+                // Send the search request
+                socket.emit('search', { keywords: keywords, location: location });
+                isLastRequestProcessed = true;
+                
             }
 
             function scheduleRetry() {
