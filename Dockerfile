@@ -12,8 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Install uwsgi
-RUN pip install uwsgi
+RUN pip install uwsgi gevent
 
 EXPOSE 8000
 
-CMD ["uwsgi", "--http", "0.0.0.0:8000", "--module", "app:application", "--master", "--processes", "3", "--threads", "2", "--gevent", "1000", "--http-websockets"]
+CMD CMD ["uwsgi", "--http", ":8000", "--gevent", "1000", "--http-websockets", "--master", "--wsgi-file", "application.py", "--callable", "application"]
