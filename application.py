@@ -39,7 +39,7 @@ else:
 # websocket
 socketio = SocketIO(application,
                     message_queue=redis_url,
-                    async_mode='gevent', 
+                    async_mode='threading', 
                     engineio_logger=True, 
                     websocket_transports=['websocket', 'xhr-polling']
                     )
