@@ -11,9 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the current directory contents into the container
 COPY . .
 
-# Install Gunicorn
-RUN pip install gunicorn gevent gevent-websocket
-
+RUN pip install gunicorn
 EXPOSE 8000
 
-CMD ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "-w", "1", "application:application"]
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "-k", "gevent", "application:application", "--workers=1"]
