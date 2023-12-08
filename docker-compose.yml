@@ -3,7 +3,7 @@ version: '3.8'
 services:
   web:
     build: .
-    command: gunicorn -b 0.0.0.0:8000 -k gevent application:application --workers=2
+    command: gunicorn -b 0.0.0.0:8000 -k gevent app:application --workers=3
     volumes:
       - .:/usr/src/app
     ports:
