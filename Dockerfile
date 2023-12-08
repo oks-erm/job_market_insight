@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Install uwsgi
-RUN pip install uwsgi gevent
+RUN pip install uwsgi
 
 EXPOSE 8000
 
