@@ -16,4 +16,4 @@ RUN pip install uwsgi
 
 EXPOSE 8000
 
-CMD ["uwsgi", "--http", "0.0.0.0:8000", "--module", "app:application", "--master", "--processes", "3", "--threads", "2"]
+CMD ["uwsgi", "--http", "0.0.0.0:8000", "--module", "app:application", "--master", "--processes", "3", "--threads", "2", "--gevent", "1000", "--http-websockets"]

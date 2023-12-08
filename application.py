@@ -131,10 +131,14 @@ def scrape_linkedin_data(self, position, country_name, *args, **kwargs):
 
 @socketio.on('search')
 def handle_search_event(data):
-    keywords = data.get('keywords')
-    location = data.get('location')
-    response = process_search_request(keywords, location)
-    emit('existing_data_plots', response)
+    try:
+        keywords = data.get('keywords')
+        location = data.get('location')
+        response = process_search_request(keywords, location)
+        emit('existing_data_plots', response)
+    except KeyError as e:
+        print(f"Error handling search event: {e}")
+        emit('error', {'message': 'Disconnected. Please try again.'})
 
 
 @socketio.on_error_default 

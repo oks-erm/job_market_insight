@@ -3,7 +3,7 @@ version: '3.8'
 services:
   web:
     build: .
-    command: uwsgi --http 0.0.0.0:8000 --module app:application --master --processes 3 --threads 2
+    command: uwsgi --http 0.0.0.0:8000 --module app:application --master --processes 3 --threads 2 --gevent 1000 --http-websockets
     volumes:
       - .:/usr/src/app
     ports:
