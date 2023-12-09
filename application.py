@@ -61,7 +61,7 @@ celery_app.conf.timezone = 'UTC'
 
 logging.setLoggerClass(CustomSocketIOLogger)
 logger = logging.getLogger('socketio')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 CORS(application)
 mail = Mail(application)
