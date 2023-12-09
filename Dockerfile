@@ -11,9 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the current directory contents into the container
 COPY . .
 
-# Install uwsgi
 RUN pip install gunicorn
-
 EXPOSE 8000
 
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "application:app", "--workers=3"]
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "-k", "gevent", "app:application", "--workers=3"]
