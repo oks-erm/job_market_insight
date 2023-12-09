@@ -3,7 +3,7 @@ version: '3.8'
 services:
   web:
     build: .
-    command: uwsgi --http :8000 --gevent 1000 --http-websockets --master --wsgi-file application.py --callable application
+    command: gunicorn -b 0.0.0.0:8000 application:app --workers=3
     volumes:
       - .:/usr/src/app
     ports:
