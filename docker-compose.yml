@@ -3,8 +3,7 @@ version: '3.8'
 services:
   web:
     build: .
-    command: gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 application:application --worker-connections 1000 --access-logfile - --error-logfile -
-
+    command: gunicorn -k gevent -worker-connections 1000 application:application
     volumes:
       - .:/usr/src/app
     ports:
