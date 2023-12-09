@@ -11,8 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the current directory contents into the container
 COPY . .
 
-# Install Gunicorn and Eventlet
-RUN pip install gunicorn eventlet
+# Install Gunicorn and Gevent
+RUN pip install gunicorn gevent gevent-websocket
 
 # Run gunicorn when the container launches
 EXPOSE 8000
