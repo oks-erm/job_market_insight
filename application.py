@@ -6,6 +6,7 @@ import traceback
 import plots
 import re
 import os
+import logging
 from flask_mail import Mail, Message
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
@@ -14,6 +15,7 @@ from celery import Celery
 from markupsafe import escape
 from scraper import linkedin_scraper
 from db import get_job_data, create_table
+from custom_logs import CustomSocketIOLogger
 from geoid import country_dict
 from skills import tech_jobs
 from celery.exceptions import MaxRetriesExceededError
@@ -56,6 +58,10 @@ celery_app = Celery('celery_app',
                     )
 celery_app.conf.beat_schedule = create_beat_schedule(tech_jobs, country_dict)
 celery_app.conf.timezone = 'UTC'
+
+logging.setLoggerClass(CustomSocketIOLogger)
+logger = logging.getLogger('socketio')
+logger.setLevel(logging.INFO)
 
 CORS(application)
 mail = Mail(application)

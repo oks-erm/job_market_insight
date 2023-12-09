@@ -18,7 +18,3 @@ class CustomSocketIOLogger(logging.Logger):
             return False
         return True
 
-
-logging.setLoggerClass(CustomSocketIOLogger)
-logger = logging.getLogger('socketio')
-logger.setLevel(logging.INFO)
