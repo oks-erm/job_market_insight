@@ -1,5 +1,5 @@
-import eventlet
-eventlet.monkey_patch()
+from gevent import monkey
+monkey.patch_all()
 import requests
 import secrets
 import traceback
@@ -41,7 +41,7 @@ else:
 # websocket
 socketio = SocketIO(application,
                     message_queue=redis_url,
-                    async_mode='eventlet', 
+                    async_mode='gevent', 
                     engineio_logger=True, 
                     cors_allowed_origins="*",
                     websocket_transports=['websocket', 'xhr-polling']

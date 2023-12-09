@@ -3,7 +3,8 @@ version: '3.8'
 services:
   web:
     build: .
-    command: gunicorn -k eventlet -w 1 application:application --worker-connections 1000 --no-sendfile --access-logfile - --error-logfile -  --log-level debug
+    command: gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 application:application --worker-connections 1000 --access-logfile - --error-logfile -
+
     volumes:
       - .:/usr/src/app
     ports:
