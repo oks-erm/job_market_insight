@@ -1,5 +1,5 @@
-from eventlet import monkey_patch
-monkey_patch()
+import eventlet
+eventlet.monkey_patch()
 import requests
 import secrets
 import traceback
