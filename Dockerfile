@@ -17,4 +17,4 @@ RUN pip install gunicorn gevent gevent-websocket
 # Run gunicorn when the container launches
 EXPOSE 8000
 
-CMD ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "-w", "4", "application:application", "--worker-connections", "1000", "--access-logfile", "-", "--error-logfile", "-"]
+CMD ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "application:application", "--worker-connections", "1000", "--access-logfile", "-", "--error-logfile", "-"]
