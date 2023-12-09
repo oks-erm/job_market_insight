@@ -39,6 +39,8 @@ socketio = SocketIO(application,
                     message_queue=redis_url,
                     async_mode='threading', 
                     engineio_logger=True, 
+                    manage_session=True,
+                    cors_allowed_origins="*",
                     websocket_transports=['websocket', 'xhr-polling']
                     )
 
