@@ -45,17 +45,14 @@ Flask==2.3.2
 Flask-Caching==2.1.0
 Flask-Cors==4.0.0
 Flask-Mail==0.9.1
-Flask-SocketIO==5.3.6
+Flask-SocketIO
 fonttools==4.40.0
 fqdn==1.5.1
 fuzzywuzzy==0.18.0
 geographiclib==2.0
 geopy==2.3.0
 geotext==0.4.0
-gevent==23.9.1
-gevent-websocket==0.10.1
 greenlet==3.0.2
-gunicorn==21.2.0
 h11==0.14.0
 h2==3.2.0
 hpack==3.0.0
@@ -142,7 +139,6 @@ pyzmq==25.1.0
 qtconsole==5.4.3
 QtPy==2.3.1
 rapidfuzz==3.5.2
-redis==4.6.0
 referencing==0.29.1
 requests==2.31.0
 rfc3339-validator==0.1.4
