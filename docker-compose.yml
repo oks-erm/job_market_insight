@@ -4,8 +4,6 @@ services:
   web:
     build: .
     command: gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 application:application
-    volumes:
-      - .:/usr/src/app
     ports:
       - "8000:8000"
     environment:

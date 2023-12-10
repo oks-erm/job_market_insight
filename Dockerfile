@@ -11,8 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the current directory contents into the container
 COPY . .
 
-# Install Gunicorn and Gevent
-RUN pip install gunicorn==21.2.0 gevent==21.8.0 gevent-websocket==0.10.1
-
 # Run gunicorn when the container launches
 EXPOSE 8000
+
+CMD ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "-w", "1", "application:application"]
