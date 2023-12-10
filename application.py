@@ -44,7 +44,7 @@ socketio = SocketIO(application,
                     async_mode='gevent', 
                     engineio_logger=True, 
                     cors_allowed_origins="*",
-                    websocket_transports=['websocket', 'xhr-polling']
+                    websocket_transports=['websocket']
                     )
 
 # celery
