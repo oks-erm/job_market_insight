@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Install Gunicorn and Gevent
-RUN pip install gunicorn gevent
+RUN pip install gunicorn
 
 # Run gunicorn when the container launches
 EXPOSE 8000
