@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Install Gunicorn and Gevent
-RUN pip install gunicorn gevent gevent-websocket
+RUN pip install gunicorn==21.2.0 gevent==21.8.0 gevent-websocket==0.10.1
 
 # Run gunicorn when the container launches
 EXPOSE 8000
