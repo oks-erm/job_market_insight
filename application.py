@@ -41,7 +41,7 @@ else:
 # websocket
 socketio = SocketIO(application,
                     message_queue=redis_url,
-                    async_mode='gevent', 
+                    # async_mode='gevent', 
                     engineio_logger=True, 
                     cors_allowed_origins="*",
                     websocket_transports=['websocket', 'xhr-polling']
