@@ -3,7 +3,7 @@ version: '3.8'
 services:
   web:
     build: .
-    command: gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 application:application
+    command: gunicorn -k gevent -w 1 application:application
     volumes:
       - .:/usr/src/app
     ports:
