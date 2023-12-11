@@ -7,7 +7,7 @@ services:
     volumes:
       - .:/usr/src/app
     ports:
-      - "5000:5000"
+      - "8000:8000"
     environment:
       - FLASK_ENV=production
     env_file:
