@@ -5,13 +5,13 @@ WORKDIR /usr/src/app
 
 # Install requirements.txt
 COPY requirements.txt ./
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the current directory contents into the container
 COPY . .
 
-RUN pip install gunicorn gevent==21.8.0 greenlet==1.1.3 gevent-websocket
+RUN pip install gunicorn gevent-websocket
 
 EXPOSE 8000
 
