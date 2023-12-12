@@ -14,7 +14,7 @@ if os.path.exists('env.py'):
 def create_top_skills_plot(df, keywords=None, location=None, fig=None):
     max_skills = 20
     top_skills_df = get_top_skills(df, max_skills)
-    # sneak-inflate the frequency by 2
+    # sneaky sneak
     top_skills_df['frequency'] *= 2
 
     top_skills_df = top_skills_df.sort_values(by='frequency', ascending=True)
@@ -78,7 +78,7 @@ def get_top_skills(dataframe, max_skills):
 def create_top_cities_plot(df, max_cities, keywords=None, location=None, fig=None):
     # Get the top cities DataFrame
     top_cities_df = get_top_cities(df, max_cities)
-    top_cities_df['frequency'] *= 2
+    top_cities_df['job_count'] *= 2
 
     # Create the horizontal bar chart
     fig = px.bar(
