@@ -15,4 +15,4 @@ RUN pip install gunicorn gevent==21.8.0 gevent-websocket
 
 EXPOSE 8000
 
-CMD ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "-w", "1", "application:application"]
+CMD ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "-w", "1", "-b", "0.0.0.0:8000", "application:application"]
