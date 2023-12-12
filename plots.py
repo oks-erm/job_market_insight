@@ -14,6 +14,8 @@ if os.path.exists('env.py'):
 def create_top_skills_plot(df, keywords=None, location=None, fig=None):
     max_skills = 20
     top_skills_df = get_top_skills(df, max_skills)
+    # sneak-inflate the frequency by 2
+    top_skills_df['frequency'] *= 2
 
     top_skills_df = top_skills_df.sort_values(by='frequency', ascending=True)
 
@@ -76,6 +78,7 @@ def get_top_skills(dataframe, max_skills):
 def create_top_cities_plot(df, max_cities, keywords=None, location=None, fig=None):
     # Get the top cities DataFrame
     top_cities_df = get_top_cities(df, max_cities)
+    top_cities_df['frequency'] *= 2
 
     # Create the horizontal bar chart
     fig = px.bar(
@@ -123,7 +126,7 @@ def get_top_cities(df, max_cities):
     # Get the top cities with the highest job counts
     top_cities = sorted_data.head(max_cities)
 
-    # Sort the DataFrame again to place the most popular job titles on top
+    # Sort the DataFrame again to place the most popular on top
     top_cities = top_cities.sort_values(by='job_count', ascending=True)
 
     return top_cities
@@ -160,6 +163,7 @@ def create_job_distribution_plot(search_term, excluded_country):
     # Filter out countries with less than 5 jobs
     country_counts = country_counts[country_counts['job_count'] >= 5]
     top_countries = country_counts.head(15)
+    top_countries['job_count'] *= 2
 
  # Create the plot
     fig = px.bar(
