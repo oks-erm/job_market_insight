@@ -1,4 +1,4 @@
-# IT Job Market Analysis tool
+# IT Job Market Analysis tool /beta/
 
 [LIVE VERSION HERE](http://itjinsights-env.eba-6cv9ca2d.eu-central-1.elasticbeanstalk.com/)
 
@@ -32,7 +32,7 @@ _________
 
 - Newsletters covering resent trends.
 
-- List of links to the job postings displayed on visualizations.
+- List of the jobs available from visualizations.
 
 - More data visualizations.
 
@@ -61,7 +61,3 @@ _____
 - Data Visualization Libraries (Plotly, Matplotlib, Seaborn)
 
 ____________________
-
-
---- Let me know how you broke it :) ---
-
