@@ -162,7 +162,7 @@ def create_job_distribution_plot(search_term, excluded_country):
 
     # Filter out countries with less than 5 jobs
     country_counts = country_counts[country_counts['job_count'] >= 5]
-    top_countries = country_counts.head(15)
+    top_countries = country_counts.head(15).copy()
     top_countries['job_count'] *= 2
 
  # Create the plot
