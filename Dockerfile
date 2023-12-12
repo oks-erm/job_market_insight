@@ -13,6 +13,6 @@ COPY . .
 
 RUN pip install gunicorn gevent==21.8.0 gevent-websocket
 
-EXPOSE 8080
+EXPOSE 8000
 
 CMD ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "-w", "1", "application:application"]
