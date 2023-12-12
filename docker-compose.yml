@@ -13,27 +13,6 @@ services:
     depends_on:
       - redis
 
-  celery_worker:
-    build: .
-    command: celery -A application:celery_app worker --loglevel=info --concurrency=8
-    volumes:
-      - .:/usr/src/app
-    env_file:
-      - .env
-    depends_on:
-      - redis
-
-  celery_beat:
-    build: .
-    command: celery -A application:celery_app beat --loglevel=info --schedule=/usr/src/app/tmp/celerybeat-schedule
-    volumes:
-      - .:/usr/src/app
-      - celerybeat-schedule:/usr/src/app/tmp
-    env_file:
-      - .env
-    depends_on:
-      - redis
-
   redis:
     image: "redis:alpine"
     volumes:
@@ -52,4 +31,3 @@ services:
 
 volumes:
   redis-data:
-  celerybeat-schedule:
