@@ -148,7 +148,12 @@
             populateAutocompleteInputs();
 
             // WebSocket connection setup
-            let socket = io();
+            let socket = io({
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 2000
+            });
+
             let isSocketConnected = false;
             let retryCount = 0;
             const maxRetries = 5;
@@ -175,7 +180,7 @@
             }
                                 
             function onDisconnect(reason) {
-                // console.log("Disconnected from WebSocket:");
+                console.log("Reconnecting to WebSocket");
                 isSocketConnected = false;
             }
 
