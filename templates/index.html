@@ -218,6 +218,7 @@
                 $('#explore').show();
                 $('#connectionMessage').hide();
                 $('#buttonLoader').hide();
+                hideLoader();
                 isSocketConnected = true;
             });
 
@@ -226,6 +227,7 @@
                 isSocketConnected = false;
                 $('#explore').hide();
                 $('#connectionMessage').show();
+                $('#buttonLoader').show();
             });
 
             socket.on('error', function (errorMessage) {
@@ -293,7 +295,7 @@
                         hideLoader();
                         $('#buttonLoader').hide();
                         $('#explore').show();
-                        
+
                         $('#topSkillsPlotContainer').show();
                         $('#topCitiesPlotContainer').show();
                         $('#jobsDistributionPlotContainer').show();
