@@ -222,14 +222,19 @@ def get_job_data(keywords=None, country=None):
                 score_en = fuzz.ratio(keywords_en, title) if keywords_en else 0
                 if score_en > 62:
                     matched_keywords.add(title)
-                    if primary_language != 'en':
-                        translated_title = translate_title(
-                            title, target_lang=primary_language)
-                        matched_keywords.add(translated_title)
 
         # Filter matched titles based on exclusion rules
-        filtered_keywords = filter_matched_titles(keywords, matched_keywords)
-        print(f"Matched keywords: {filtered_keywords}")
+        filtered_keywords = filter_titles(keywords, matched_keywords)
+
+        # Translate filtered keywords if necessary
+        final_keywords = set(filtered_keywords)
+        for keyword in filtered_keywords:
+            if primary_language != 'en':
+                translated_keyword = translate_title(
+                    keyword, target_lang=primary_language)
+                final_keywords.add(translated_keyword)
+
+        print(f"Matched and filtered keywords: {final_keywords}")
 
         query = '''
             SELECT j.job_id, j.title, j.company, l.location_name as location, c.category_name as category, j.date, j.skills, j.link
@@ -298,12 +303,12 @@ def process_data(df):
     return df_sorted
 
 # Exclude matched titles that could cause confusion or compromise accuracy
-def filter_matched_titles(search_term, matched_titles):
+def filter_titles(search_term, titles):
     exclusion_rules = {
-        "Front End Developer": ["Back End Developer"],
+        "Front End Developer": ["Back End Developer", "Software Developer", "Software Engineer"],
         "Back End Developer": ["Front End Developer"],
-        "Software Developer": ["Software Engineer"],
-        "Software Engineer": ["Software Developer"],
+        "Software Developer": ["Software Engineer", "Front End Developer", "Game Developer"],
+        "Software Engineer": ["Software Developer", "Front End Developer"],
         "Data Scientist": ["Data Analyst"],
         "Data Analyst": ["Data Scientist"],
         "UI/UX Designer": ["Graphic Designer"],
@@ -312,8 +317,8 @@ def filter_matched_titles(search_term, matched_titles):
         "AI Engineer": ["Machine Learning Engineer"],
         "Machine Learning Engineer": ["AI Engineer"],
         "Game Designer": ["Game Developer"],
-        "Game Developer": ["Game Designer"]
+        "Game Developer": ["Game Designer", "Software Developer"]
     }
 
     excluded_titles = exclusion_rules.get(search_term, [])
-    return [title for title in matched_titles if title not in excluded_titles]
+    return [title for title in titles if title not in excluded_titles]
