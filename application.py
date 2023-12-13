@@ -148,6 +148,9 @@ def handle_search_event(data):
     except KeyError as e:
         print(f"Error handling search event: {e}")
         emit('error', {'message': 'Disconnected. Please try again.'})
+    except Exception as e:
+        print(f"Failed after multiple attempts: {e}")
+        emit('error', {'message': 'Failed to process request.'})
 
 
 @socketio.on_error_default 
