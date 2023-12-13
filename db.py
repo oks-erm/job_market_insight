@@ -204,9 +204,9 @@ def translate_title(title, target_lang):
     
 
 @retry(wait=wait_fixed(2), stop=stop_after_attempt(3))
-def get_job_data(keywords=None, country=None):
+def get_job_data(keyword=None, country=None):
     # Preprocess and clean the English keywords
-    keywords_en = preprocess_title(keywords) if keywords else None
+    # keyword_en = preprocess_title(keyword) if keyword else None
     primary_language = get_primary_language(country)
 
     try:
@@ -217,14 +217,17 @@ def get_job_data(keywords=None, country=None):
 
         # Fuzzy matching for job titles
         matched_keywords = set()
-        if keywords:
+        if keyword:
             for title in tech_jobs:
-                score_en = fuzz.ratio(keywords_en, title) if keywords_en else 0
-                if score_en > 62:
+                if fuzz.ratio(keyword, title) > 65:
                     matched_keywords.add(title)
 
+        print(f"Matched keywords: {matched_keywords}")
+
         # Filter matched titles based on exclusion rules
-        filtered_keywords = filter_titles(keywords, matched_keywords)
+        filtered_keywords = filter_titles(keyword, matched_keywords)
+
+        print(f"Filtered keywords: {filtered_keywords}")
 
         # Translate filtered keywords if necessary
         final_keywords = set(filtered_keywords)
@@ -234,7 +237,7 @@ def get_job_data(keywords=None, country=None):
                     keyword, target_lang=primary_language)
                 final_keywords.add(translated_keyword)
 
-        print(f"Matched and filtered keywords: {final_keywords}")
+        print(f"Final keywords: {final_keywords}")
 
         query = '''
             SELECT j.job_id, j.title, j.company, l.location_name as location, c.category_name as category, j.date, j.skills, j.link
@@ -246,11 +249,11 @@ def get_job_data(keywords=None, country=None):
         conditions = []
         params = []
 
-        if filtered_keywords:
+        if final_keywords:
             title_conditions = ' OR '.join(
-                ["j.title ILIKE %s" for _ in filtered_keywords])
+                ["j.title ILIKE %s" for _ in final_keywords])
             conditions.append(f"({title_conditions})")
-            params.extend(['%' + kw + '%' for kw in filtered_keywords])
+            params.extend(['%' + kw + '%' for kw in final_keywords])
 
         if country:
             conditions.append("l.location_name ILIKE %s")
@@ -308,7 +311,7 @@ def filter_titles(search_term, titles):
         "Front End Developer": ["Back End Developer", "Software Developer", "Software Engineer"],
         "Back End Developer": ["Front End Developer"],
         "Software Developer": ["Software Engineer", "Front End Developer", "Game Developer"],
-        "Software Engineer": ["Software Developer", "Front End Developer"],
+        "Software Engineer": ["Software Developer", "Front End Developer", "Game Developer"],
         "Data Scientist": ["Data Analyst"],
         "Data Analyst": ["Data Scientist"],
         "UI/UX Designer": ["Graphic Designer"],
@@ -317,8 +320,8 @@ def filter_titles(search_term, titles):
         "AI Engineer": ["Machine Learning Engineer"],
         "Machine Learning Engineer": ["AI Engineer"],
         "Game Designer": ["Game Developer"],
-        "Game Developer": ["Game Designer", "Software Developer"]
+        "Game Developer": ["Game Designer", "Software Developer", "Software Engineer"],
     }
 
     excluded_titles = exclusion_rules.get(search_term, [])
-    return [title for title in titles if title not in excluded_titles]
+    return set([title for title in titles if title not in excluded_titles])

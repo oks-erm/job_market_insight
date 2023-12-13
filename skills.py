@@ -87,10 +87,8 @@ tech_jobs = [
     "Front End Developer",
     "Back End Developer",
     "Game Designer",
-    "Solutions Architect",
     "Blockchain Developer",
     "Game Developer",
-    "ERP Consultant (Enterprise Resource Planning)",
     "Network Security Engineer",
     "Cloud Engineer",
     "Business Intelligence (BI) Analyst",
@@ -106,7 +104,6 @@ tech_jobs = [
     "Mobile Application Tester",
     "Network Architect",
     "IT Compliance Analyst",
-    "Software Development Manager",
     "Data Engineer",
     "IT Recruiter",
     "Hardware Engineer"

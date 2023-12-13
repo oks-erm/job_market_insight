@@ -207,6 +207,19 @@
                 return validOptions.includes(input);
             }
 
+            function showError(inputId, message) {
+                $(inputId).addClass('error');
+                $(inputId + 'Error').text(message).show();
+                hideLoader();
+                $('#explore').show();
+                $('#buttonLoader').hide();
+            }
+
+            function hideError(inputId) {
+                $(inputId).removeClass('error');
+                $(inputId + 'Error').hide();
+            }
+
             populateAutocompleteInputs();
 
             // WebSocket connection setup
@@ -266,11 +279,16 @@
                 lastSearchRequest = { keywords, location };
 
                 // Validate inputs against available options
-                if (isValidInput(keywords, availableJobs) && isValidInput(location, availableLocations)) {
-                    socket.emit('search', lastSearchRequest);
-                } else {
-                    showError('#searchForm', 'Please select valid options');
+                if (!isValidInput(keywords, availableJobs)) {
+                    showError('#keywordsInput', 'Please select a valid job title from the list');
+                    return;
                 }
+                if (!isValidInput(location, availableLocations)) {
+                    showError('#locationInput', 'Please select a valid location from the list');
+                    return;
+                }
+                
+                socket.emit('search', { keywords: keywords, location: location });
             }
 
             function retrySearchRequest() {
