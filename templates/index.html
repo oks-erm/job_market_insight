@@ -115,6 +115,79 @@
         $(document).ready(function () {
             let availableJobs = [];
             let availableLocations = [];
+            let lastSearchRequest = null;
+            let isSocketConnected = false;
+            // Plots custom layout
+            let updateLayoutTopSkills = {
+                title: 'Top Skills',
+                yaxis: {
+                    automargin: true,
+                    tickfont: {
+                        size: 11
+                    }
+                },
+                xaxis: {
+                    automargin: true
+                },
+                legend: {
+                    orientation: 'h',
+                    x: 0,
+                    y: -0.15
+                },
+                margin: {
+                    l: 5,
+                    r: 5,
+                    t: 50,
+                    b: 50
+                }
+            };
+            let updateLayoutTopCities = {
+                title: 'Jobs by City',
+                yaxis: {
+                    automargin: true,
+                    tickfont: {
+                        size: 11
+                    }
+                },
+                xaxis: {
+                    automargin: true
+                },
+                legend: {
+                    orientation: 'h',
+                    x: 0,
+                    y: -0.15
+                },
+                margin: {
+                    l: 12,
+                    r: 12,
+                    t: 50,
+                    b: 50
+                }
+            };
+            let updateLayoutJobsDistribution = {
+                title: 'Jobs by Country',
+                yaxis: {
+                    automargin: true,
+                    tickfont: {
+                        size: 11
+                    },
+                    categoryorder: 'total ascending',
+                },
+                xaxis: {
+                    automargin: true
+                },
+                legend: {
+                    orientation: 'h',
+                    x: 0,
+                    y: -0.15
+                },
+                margin: {
+                    l: 12,
+                    r: 12,
+                    t: 50,
+                    b: 50
+                }
+            };
 
             function populateAutocompleteInputs() {
                 $.get("/get-available-data", function (data) {
@@ -134,66 +207,50 @@
                 return validOptions.includes(input);
             }
 
-            function showError(inputId, message) {
-                $(inputId).addClass('error');
-                $(inputId + 'Error').text(message).show();
-                hideLoader();
-            }
-
-            function hideError(inputId) {
-                $(inputId).removeClass('error');
-                $(inputId + 'Error').hide();
-            }
-
             populateAutocompleteInputs();
 
             // WebSocket connection setup
             let socket = io();
-            let isSocketConnected = false;
-            let retryCount = 0;
-            const maxRetries = 5;
-            let retryDelay = 1000; // 1 second
-            const maxRetryDelay = 30000; // 30 seconds
 
-            // Event handlers for WebSocket events
-            socket.on('connect', onConnect);
-            socket.on('disconnect', onDisconnect);
-            socket.on('existing_data_plots', handleExistingPlotData);
+            socket.on('connect', function () {
+                socket.emit('my event', { data: 'I\'m connected!' });
+                console.log("Connected to WebSocket");
+                $('#explore').show();
+                $('#connectionMessage').hide();
+                $('#buttonLoader').hide();
+                isSocketConnected = true;
+            });
+
+            socket.on('disconnect', function () {
+                console.log("Reconnecting to WebSocket...");
+                isSocketConnected = false;
+                $('#explore').hide();
+                $('#connectionMessage').show();
+            });
+
+            socket.on('error', function (errorMessage) {
+                console.error('Error received from server: ', errorMessage);
+                showError('#searchForm', errorMessage.message);
+                retrySearchRequest();
+            });
+
+            socket.on('existing_data_plots', function (data) {
+                handlePlotData(data);
+                lastSearchRequest = null;
+            });
 
             $('#searchForm').submit(function (event) {
                 event.preventDefault();
                 sendSearchRequest();
             });
 
-            function onConnect() {
-                socket.emit('my event', { data: 'I\'m connected!' });
-                console.log("Connected to WebSocket");
-                $('#explore').show();
-                $('#connectionMessage').hide();
-                // Handle successful connection
-                resetConnectionState();
-            }
-                                
-            function onDisconnect(reason) {
-                console.log("Reconnecting to WebSocket...");
-                isSocketConnected = false;
-            }
-
             function sendSearchRequest() {
-                // Check if the WebSocket is not connected
-                if (!isSocketConnected) {
-                    console.log("WebSocket not connected. Attempting to reconnect...");
-                    showConnectionErrorMessage("Connection lost. Attempting to reconnect...");
-                    // Attempt to reconnect
-                    socket.connect();
-                    scheduleRetry();
-                    return;
-                }
-
                 // Hide error messages if visible
                 hideError('#keywordsInput');
                 hideError('#locationInput');
                 showLoader();
+                $('#explore').hide();
+                $('#buttonLoader').show();
 
                 // Clear the plots
                 $('#topSkillsPlotContainer').hide();
@@ -203,64 +260,27 @@
                 let keywords = $('#keywordsInput').val();
                 let location = $('#locationInput').val();
 
+                // Save the last search request
+                lastSearchRequest = { keywords, location };
+
                 // Validate inputs against available options
-                if (!isValidInput(keywords, availableJobs)) {
-                    showError('#keywordsInput', 'Please select a valid job title from the list');
-                    return;
-                }
-                if (!isValidInput(location, availableLocations)) {
-                    showError('#locationInput', 'Please select a valid location from the list');
-                    return;
-                }
-
-                // Send the search request
-                socket.emit('search', { keywords: keywords, location: location });
-                isLastRequestProcessed = true;
-                
-            }
-
-            function scheduleRetry() {
-                if (retryCount < maxRetries) {
-                    setTimeout(() => {
-                        if (!isSocketConnected) {
-                            console.log(`Attempt ${retryCount + 1} to reconnect and send request.`);
-                        } else {
-                            sendSearchRequest();
-                        }
-                        retryCount++;
-                        retryDelay = Math.min(retryDelay * 2, maxRetryDelay); // Exponential backoff
-                    }, retryDelay);
+                if (isValidInput(keywords, availableJobs) && isValidInput(location, availableLocations)) {
+                    socket.emit('search', lastSearchRequest);
                 } else {
-                    showConnectionErrorMessage("Failed to connect after multiple attempts.");
+                    showError('#searchForm', 'Please select valid options');
                 }
             }
 
-            function resetConnectionState() {
-                $('#buttonLoader').hide();
-                $('#explore').show();
-                isSocketConnected = true;
-                retryCount = 0;
-                retryDelay = 2000;
-                $('#noDataMessage').hide();
+            function retrySearchRequest() {
+                if (lastSearchRequest && isSocketConnected) {
+                    setTimeout(() => {
+                        console.log("Retrying last search request...");
+                        sendSearchRequest();
+                    }, 3000);
+                }
             }
 
-            function showConnectionErrorMessage(message) {
-                $('#buttonLoader').show();
-                $('#explore').hide();
-                $('#noDataMessage').text(message).show();
-            }
-
-            function handleExistingPlotData(data) {
-                handlePlotData(data, 'newPlot');
-            }
-
-            function handleUpdatedPlotData(data) {
-                console.log('Plot update received.');
-                handleProgressUpdate(data.state);
-                handlePlotData(data, 'react'); 
-            }
-
-            function handlePlotData(data, plotMethod) {
+            function handlePlotData(data) {
             if (data['top_skills_plot'] && data['top_cities_plot'] && data['jobs_distribution_plot']) {
                 try {
                     let isMobile = window.innerWidth < 600;
@@ -269,84 +289,14 @@
                     let topCitiesPlot = JSON.parse(data['top_cities_plot']);
                     let jobsDistributionPlot = JSON.parse(data['jobs_distribution_plot']);
 
-                    let updateLayoutTopSkills = {
-                        title: 'Top Skills',
-                        yaxis: {
-                            automargin: true,
-                            tickfont: {
-                                size: 11
-                            }
-                        },
-                        xaxis: {
-                            automargin: true
-                        },
-                        legend: {
-                            orientation: 'h',
-                            x: 0,
-                            y: -0.15
-                        },
-                        margin: {
-                            l: 5,
-                            r: 5,
-                            t: 50,
-                            b: 50
-                        }
-                    };
-                    let updateLayoutTopCities = {
-                        title: 'Jobs by City',
-                        yaxis: {
-                            automargin: true,
-                            tickfont: {
-                                size: 11
-                            }
-                        },
-                        xaxis: {
-                            automargin: true
-                        },
-                        legend: {
-                            orientation: 'h',
-                            x: 0,
-                            y: -0.15
-                        },
-                        margin: {
-                            l: 12,
-                            r: 12,
-                            t: 50,
-                            b: 50
-                        }
-                    };
-                    let updateLayoutJobsDistribution = {
-                        title: 'Jobs by Country',
-                        yaxis: {
-                            automargin: true,
-                            tickfont: {
-                                size: 11
-                            },
-                            categoryorder: 'total ascending',
-                        },
-                        xaxis: {
-                            automargin: true
-                        },
-                        legend: {
-                            orientation: 'h',
-                            x: 0,
-                            y: -0.15
-                        },
-                        margin: {
-                            l: 12,
-                            r: 12,
-                            t: 50,
-                            b: 50
-                        }
-                    };
-
-
                     if (validatePlotData(topSkillsPlot) && validatePlotData(topCitiesPlot)) {
                         hideLoader();
+                        $('#buttonLoader').hide();
+                        $('#explore').show();
+                        
                         $('#topSkillsPlotContainer').show();
                         $('#topCitiesPlotContainer').show();
                         $('#jobsDistributionPlotContainer').show();
-
 
                         Plotly.newPlot('topSkillsPlot', topSkillsPlot.data, topSkillsPlot.layout);
                         Plotly.newPlot('topCitiesPlot', topCitiesPlot.data, topCitiesPlot.layout);
@@ -374,6 +324,19 @@
                 return typeof plotData === 'object' && plotData !== null &&
                     plotData.hasOwnProperty('data') && plotData.hasOwnProperty('layout') &&
                     Array.isArray(plotData.data) && plotData.data.length > 0;
+            }
+
+            function showError(inputId, message) {
+                $(inputId).addClass('error');
+                $(inputId + 'Error').text(message).show();
+                hideLoader();
+                $('#explore').show();
+                $('#buttonLoader').hide();
+            }
+
+            function hideError(inputId) {
+                $(inputId).removeClass('error');
+                $(inputId + 'Error').hide();
             }
 
             function showLoader() {
