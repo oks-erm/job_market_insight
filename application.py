@@ -168,14 +168,14 @@ def handle_search_event(data):
         keywords = data.get('keywords')
         location = data.get('location')
         response = process_search_request(keywords, location)
-        if response is None:
+        if response is None or response.get('top_skills_plot') is None or response.get('top_cities_plot') is None or response.get('jobs_distribution_plot') is None:
             emit('no_data_found')
             return
         # Store response in Redis
         serialized_response = json.dumps(response)
         print('serialized_response', serialized_response)
 
-        redis_client.set(client_id, serialized_response, ex=3600)  # 1 hour expiry
+        redis_client.set(client_id, serialized_response, ex=360)
         emit('existing_data_plots', response)
     except Exception as e:
         emit('error', {'message': str(e)})
@@ -197,7 +197,7 @@ def process_search_request(keywords, location):
     # Get existing job data from the database
     job_data = get_job_data(keywords, location)
 
-    if job_data.empty:
+    if job_data is None:
         print("No existing data found.")
         return {
             'top_skills_plot': None,

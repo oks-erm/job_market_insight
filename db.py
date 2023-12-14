@@ -268,6 +268,9 @@ def get_job_data(keyword=None, country=None):
         conn.close()
         print(f"Retrieved {len(job_data)} job data from database.")
 
+        if not job_data:
+            return None
+
         columns = ["job_id", "title", "company", "location",
                    "category", "date", "skills", "link"]
         df = pd.DataFrame(job_data, columns=columns)

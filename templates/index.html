@@ -70,7 +70,7 @@
             </div>
         </div>
         <div id="noDataMessage" style="display: none;">
-            Seems there's no data for this request.
+            Seems there's no data for this request. Try another search! 
         </div>
         <div id="topSkillsPlotContainer" style="display: none;">
             <!-- <h2>Top Skills:</h2> -->
@@ -261,6 +261,14 @@
                 lastSearchRequest = null;
             });
 
+            socket.on('no_data_found', function () {
+                hideLoader();
+                $('#explore').show();
+                $('#buttonLoader').hide();
+                showNoDataMessage();
+                lastSearchRequest = null;
+            });
+
             $('#searchForm').submit(function (event) {
                 event.preventDefault();
                 sendSearchRequest();
@@ -270,6 +278,7 @@
                 // Hide error messages if visible
                 hideError('#keywordsInput');
                 hideError('#locationInput');
+                hideNoDataMessage();
                 showLoader();
                 $('#explore').hide();
                 $('#buttonLoader').show();
@@ -378,6 +387,10 @@
             function showNoDataMessage() {
                 $('#noDataMessage').show();
                 hideLoader();
+            }
+
+            function hideNoDataMessage() {
+                $('#noDataMessage').hide();
             }
         });
 
