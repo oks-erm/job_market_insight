@@ -42,16 +42,14 @@ document.getElementById('contactForm').addEventListener('submit', function (even
         },
         body: JSON.stringify(formData),
     })
-    // sendingblue is throttling my requests, so I'm not getting a response back, but the form is working
-    // I'm leaving it this way for now, but I'll come back to it later
-    // .then(response => {
-    //     if (!response.ok) {
-    //         return response.json().then(data => {
-    //             throw new Error(data.error || 'Computer says no. Unknown error.');
-    //         });
-    //     }
-    //     return response.json();
-    // })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Computer says no. Unknown error.');
+            });
+        }
+        return response.json();
+    })
     .then(data => {
         displayFeedback(true, data.message);
         resetForm();
