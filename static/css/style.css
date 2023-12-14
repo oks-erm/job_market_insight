@@ -334,19 +334,19 @@ button:hover {
 
 .form-feedback {
     color: #ffffff;
-    background-color: #4caf50;
+    background-color: #46d7bf;
     padding: 10px;
     margin-top: 10px;
-    border-radius: 4px;
+    border-radius: 8px;
     display: none;
 }
 
 .form-feedback.error {
-    background-color: #f44336;
+    background-color: #ffb8b8;
 }
 
 .loading {
-    background-color: #007bff;
+    background-color: #d9d1e7;
 }
 
 #footer p {
