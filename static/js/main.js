@@ -31,6 +31,8 @@ document.getElementById('contactForm').addEventListener('submit', function (even
         return; 
     }
 
+    displayLoadingFeedback(); 
+    
     let formData = { name, email, message };
 
     fetch('/process-contact-form', {
@@ -53,8 +55,8 @@ document.getElementById('contactForm').addEventListener('submit', function (even
         resetForm();
     })
     .catch((error) => {
-        displayFeedback(false, error.message);
         console.error('Error:', error);
+        displayFeedback(false, error.message);
     });
 });
 
@@ -94,7 +96,7 @@ function validateEmail(email) {
 function displayFeedback(isSuccess, message) {
     let feedbackElement = document.getElementById('formFeedback');
     feedbackElement.innerHTML = message;
-    feedbackElement.classList.remove('error');
+    feedbackElement.classList.remove('error', 'loading');
 
     if (isSuccess) {
         feedbackElement.classList.add('success');
@@ -102,6 +104,15 @@ function displayFeedback(isSuccess, message) {
         feedbackElement.classList.add('error');
     }
 
+    feedbackElement.style.display = 'block';
+    feedbackElement.scrollIntoView({ behavior: 'smooth' });
+}
+
+function displayLoadingFeedback() {
+    let feedbackElement = document.getElementById('formFeedback');
+    feedbackElement.innerHTML = 'Sending message...';
+    feedbackElement.classList.remove('error', 'success');
+    feedbackElement.classList.add('loading');
     feedbackElement.style.display = 'block';
 }
 
