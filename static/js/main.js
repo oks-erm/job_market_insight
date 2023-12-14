@@ -43,10 +43,20 @@ document.getElementById('contactForm').addEventListener('submit', function (even
         body: JSON.stringify(formData),
     })
     .then(response => {
+        // Check if the response is JSON
+        const contentType = response.headers.get('content-type');
         if (!response.ok) {
-            return response.json().then(data => {
-                throw new Error(data.error || 'Computer says no. Unknown error.');
-            });
+            if (contentType && contentType.includes('application/json')) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Computer says no. Unknown error.');
+                });
+            } else {
+                // Handle non-JSON responses
+                return response.text().then(text => {
+                    console.error('Non-JSON response:', text);
+                    // throw new Error('Server error occurred. Please try again.');
+                });
+            }
         }
         return response.json();
     })
