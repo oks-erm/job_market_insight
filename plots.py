@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
 import psycopg2
+import math
 from urllib import parse
 import os
 from db import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
@@ -163,7 +164,8 @@ def create_job_distribution_plot(search_term, excluded_country):
     # Filter out countries with less than 5 jobs
     country_counts = country_counts[country_counts['job_count'] >= 5]
     top_countries = country_counts.head(15).copy()
-    top_countries['job_count'] *= 2
+    top_countries['job_count'] = top_countries['job_count'].apply(
+        lambda x: math.floor(x * 3.6))
 
  # Create the plot
     fig = px.bar(

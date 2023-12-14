@@ -266,6 +266,7 @@ def get_job_data(keyword=None, country=None):
         job_data = cur.fetchall()
         cur.close()
         conn.close()
+        print(f"Retrieved {len(job_data)} job data from database.")
 
         columns = ["job_id", "title", "company", "location",
                    "category", "date", "skills", "link"]

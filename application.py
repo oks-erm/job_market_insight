@@ -6,7 +6,9 @@ import traceback
 import plots
 import re
 import os
+import redis
 import logging
+import json
 from flask_mail import Mail, Message
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
@@ -37,6 +39,13 @@ if application.config['DEBUG']:
     redis_url = 'redis://localhost:6379/0'
 else:
     redis_url = os.environ.get('REDIS_URL')
+
+# Redis
+redis_client = redis.StrictRedis(host='redis', port=6379, db=0)
+
+redis_client.set('test_key', 'Redis is working!')
+value = redis_client.get('test_key')
+print(value)
 
 # websocket
 socketio = SocketIO(application,
@@ -116,7 +125,7 @@ def send_email(subject, sender, recipients, text_body):
     msg.body = text_body
     mail.send(msg)
 
-
+# SocketIO events
 @celery_app.task(bind=True, name='application.scrape_linkedin_data', max_retries=3)
 def scrape_linkedin_data(self, position, country_name, *args, **kwargs):
     print(f"Scraping FROM CELERY APP for {position} in {country_name}")
@@ -137,25 +146,51 @@ def scrape_linkedin_data(self, position, country_name, *args, **kwargs):
         except MaxRetriesExceededError:
             print("Max retries exceeded for scraping task.")
 
+# SocketIO events
+@socketio.on('connect')
+def handle_connect():
+    client_id = request.args.get('client_id')
+    short_client_id = client_id[:6] if client_id else None
+    print(f"Client {short_client_id} connected")
+    if client_id:
+        # Check Redis for any stored data
+        stored_data = redis_client.get(client_id)
+        print('stored_data:', stored_data)
+        if stored_data:
+            emit('existing_data_plots', json.loads(stored_data.decode('utf-8')))
+            redis_client.delete(client_id)  # Clear stored data
+
 
 @socketio.on('search')
 def handle_search_event(data):
+    client_id = request.args.get('client_id')
     try:
         keywords = data.get('keywords')
         location = data.get('location')
         response = process_search_request(keywords, location)
+        if response is None:
+            emit('no_data_found')
+            return
+        # Store response in Redis
+        serialized_response = json.dumps(response)
+        print('serialized_response', serialized_response)
+
+        redis_client.set(client_id, serialized_response, ex=3600)  # 1 hour expiry
         emit('existing_data_plots', response)
-    except KeyError as e:
-        print(f"Error handling search event: {e}")
-        emit('error', {'message': 'Disconnected. Please try again.'})
     except Exception as e:
-        print(f"Failed after multiple attempts: {e}")
-        emit('error', {'message': 'Failed to process request.'})
+        emit('error', {'message': str(e)})
+        print(f"Error occurred: {str(e)}")
 
 
-@socketio.on_error_default 
+@socketio.on_error()
 def default_error_handler(e):
     emit('server_error', {'error': str(e)})
+    print(f"Error occurred: {str(e)}")
+
+
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
 
 
 def process_search_request(keywords, location):
@@ -174,11 +209,16 @@ def process_search_request(keywords, location):
 
     top_skills_plot = plots.create_top_skills_plot(
         job_data, keywords, location)
+    print("Top skills plot is created.")
+
     top_cities_plot = plots.create_top_cities_plot(
         job_data, max_cities=10, keywords=keywords, location=location)
+    print("Top cities plot is created.")
+
     jobs_distribution_plot = plots.create_job_distribution_plot(
         keywords, location)
-
+    print("Jobs distribution plot is created.")
+    
     return {
         'top_skills_plot': top_skills_plot.to_json() if top_skills_plot is not None else None,
         'top_cities_plot': top_cities_plot.to_json() if top_cities_plot is not None else None,

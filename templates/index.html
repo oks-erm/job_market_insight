@@ -110,6 +110,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuidv4.min.js"></script>
     <script src="../static/js/main.js"></script>
     <script>
         $(document).ready(function () {
@@ -222,12 +223,18 @@
 
             populateAutocompleteInputs();
 
+            // Check if client_id is already stored in localStorage
+            if (!localStorage.getItem('client_id')) {
+                localStorage.setItem('client_id', uuidv4());
+            }
+            let client_id = localStorage.getItem('client_id');
+
             // WebSocket connection setup
-            let socket = io();
+            let socket = io(`/?client_id=${client_id}`);
 
             socket.on('connect', function () {
                 socket.emit('my event', { data: 'I\'m connected!' });
-                console.log("Connected to WebSocket");
+                 console.log("Connected to WebSocket:", client_id.slice(0, 6));
                 $('#explore').show();
                 $('#connectionMessage').hide();
                 $('#buttonLoader').hide();
@@ -287,7 +294,7 @@
                     showError('#locationInput', 'Please select a valid location from the list');
                     return;
                 }
-                
+
                 socket.emit('search', { keywords: keywords, location: location });
             }
 
