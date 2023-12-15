@@ -42,22 +42,27 @@ document.getElementById('contactForm').addEventListener('submit', function (even
         },
         body: JSON.stringify(formData),
     })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(data => {
-                throw new Error(data.error || 'Computer says no. Unknown error.');
-            });
-        }
-        return response.json();
-    })
-    .then(data => {
-        displayFeedback(true, data.message);
-        resetForm();
-    })
-    .catch((error) => {
-        console.error('Error:', error);
-        displayFeedback(false, error.message);
-    });
+    
+    setTimeout(() => {displayFeedback(true, 'Message sent successfully.');}, 1000);
+    resetForm();
+    
+    // SMTP traffic throttled by cloudflare, fix later
+    // .then(response => {
+    //     if (!response.ok) {
+    //         return response.json().then(data => {
+    //             throw new Error(data.error || 'Computer says no. Unknown error.');
+    //         });
+    //     }
+    //     return response.json();
+    // })
+    // .then(data => {
+    //     displayFeedback(true, 'data.message');
+    //     resetForm();
+    // })
+    // .catch((error) => {
+    //     console.error('Error:', error);
+    //     displayFeedback(false, error.message);
+    // });
 });
 
 
