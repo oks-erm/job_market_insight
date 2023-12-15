@@ -1,6 +1,6 @@
 # IT Job Market Analysis tool /beta/
 
-[LIVE VERSION HERE](http://itjinsights-env.eba-6cv9ca2d.eu-central-1.elasticbeanstalk.com/)
+[LIVE VERSION HERE](http://itji.eu-central-1.elasticbeanstalk.com/)
 
 ## What's the point?:
 
