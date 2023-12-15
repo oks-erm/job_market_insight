@@ -42,11 +42,11 @@ document.getElementById('contactForm').addEventListener('submit', function (even
         },
         body: JSON.stringify(formData),
     })
-    
+
     setTimeout(() => {displayFeedback(true, 'Message sent successfully.');}, 1000);
     resetForm();
     
-    // SMTP traffic throttled by cloudflare, fix later
+    // SMTP traffic throttled by cloudflare, fix later, handling it on the server for now
     // .then(response => {
     //     if (!response.ok) {
     //         return response.json().then(data => {

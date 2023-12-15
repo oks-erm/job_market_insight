@@ -71,6 +71,17 @@ def create_table():
         )
     ''')
 
+    # Create emails table
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS emails (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255),
+            email VARCHAR(255),
+            message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.commit()
     cur.close()
     conn.close()
@@ -329,3 +340,26 @@ def filter_titles(search_term, titles):
 
     excluded_titles = exclusion_rules.get(search_term, [])
     return set([title for title in titles if title not in excluded_titles])
+
+
+def email_to_db(name, email, message):
+    conn = psycopg2.connect(host=DB_HOST, port=DB_PORT,
+                            database=DB_NAME, user=DB_USER, password=DB_PASSWORD)
+    cur = conn.cursor()
+
+    try:
+        name_truncated = truncate_string(name, 255)
+        email_truncated = truncate_string(email, 255)
+        message_truncated = truncate_string(
+            message, 1000)  
+
+        cur.execute(
+            'INSERT INTO emails (name, email, message) VALUES (%s, %s, %s)',
+            (name_truncated, email_truncated, message_truncated)
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Failed to log failed email: {e}")
+    finally:
+        cur.close()
+        conn.close()

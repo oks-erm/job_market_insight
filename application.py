@@ -16,7 +16,7 @@ from flask_cors import CORS
 from celery import Celery
 from markupsafe import escape
 from scraper import linkedin_scraper
-from db import get_job_data, create_table
+from db import get_job_data, create_table, email_to_db
 from custom_logs import CustomSocketIOLogger
 from geoid import country_dict
 from skills import tech_jobs
@@ -106,13 +106,18 @@ def process_contact_form():
         return jsonify({'error': 'Invalid message.'}), 400
     
     # Send email
-    send_email(
+    email_success = send_email(
         subject='ITJM insight app Contact Form',
         sender=application.config.get('MAIL_USERNAME'),
         recipients=[application.config.get('MAIL_USERNAME')],
         text_body=f"Name: {sanitize_input(name)}\nEmail: {sanitize_input(email)}\nMessage: {sanitize_input(message)}"
     )
 
+    if not email_success:
+        # Save to database
+        email_to_db(name, email, message)
+        return jsonify({'error': 'An error occurred while sending your message. Please try again later.'}), 500
+    
     return jsonify({'message': 'Your message has been sent successfully!'})
 
 
@@ -121,9 +126,14 @@ def sanitize_input(input_string):
 
 
 def send_email(subject, sender, recipients, text_body):
-    msg = Message(subject, sender=sender, recipients=recipients)
-    msg.body = text_body
-    mail.send(msg)
+    try:
+        msg = Message(subject, sender=sender, recipients=recipients)
+        msg.body = text_body
+        mail.send(msg)
+        return True
+    except Exception as e:
+        logging.error(f"Error sending email: {e}")
+        return False
 
 # SocketIO events
 @celery_app.task(bind=True, name='application.scrape_linkedin_data', max_retries=3)
@@ -175,7 +185,7 @@ def handle_search_event(data):
         serialized_response = json.dumps(response)
         print('serialized_response', serialized_response)
 
-        redis_client.set(client_id, serialized_response, ex=360)
+        redis_client.set(client_id, serialized_response, ex=300)
         emit('existing_data_plots', response)
     except Exception as e:
         emit('error', {'message': str(e)})
